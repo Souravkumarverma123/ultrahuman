@@ -8,6 +8,13 @@
       "when": 1767592965691,
       "tag": "0000_dusty_morg",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1781260267220,
+      "tag": "0001_worthless_rumiko_fujikawa",
+      "breakpoints": true
     }
   ]
 }

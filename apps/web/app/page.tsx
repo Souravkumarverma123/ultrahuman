@@ -1,13 +1,5 @@
-import { api } from "~/trpc/server";
+import { redirect } from "next/navigation";
 
 export default async function Home() {
-  const { status } = await api.health.getHealth.query();
-  return (
-    <main className="min-h-screen min-w-screen flex justify-center items-center">
-      <div>
-        <h1 className="text-3xl">Ultrahuman</h1>
-        <h2>Server Status: {status}</h2>
-      </div>
-    </main>
-  );
+  redirect("/inbox");
 }
