@@ -1,0 +1,19 @@
+services:
+  postgresdb:
+    image: postgres:15
+    restart: unless-stopped
+    container_name: ultrahuman-postgresdb
+
+    environment:
+      POSTGRES_USER: souravkumar
+      POSTGRES_PASSWORD: souravkumar178
+      POSTGRES_DB: ultrahuman
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - ultrahuman-db:/var/lib/postgresql/data
+
+volumes:
+  ultrahuman-db:
