@@ -1,5 +1,5 @@
 import { z } from "../../schema";
-import { corsair } from "@repo/services/corsair";
+import { corsair, generateOAuthUrl } from "@repo/services/corsair";
 import { publicProcedure, router } from "../../trpc";
 import { generatePath } from "../../utils/path-generator";
 
@@ -41,6 +41,83 @@ const threadSchema = z.object({
   messages: z.array(emailMessageSchema).optional(),
 });
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function parseEmailAddress(headerVal?: string): { email: string; name?: string } {
+  if (!headerVal) return { email: "" };
+  const match = headerVal.match(/(.*?)\s*<([^>]+)>/);
+  if (match) {
+    return {
+      name: match[1]?.replace(/^["']|["']$/g, '').trim() || undefined,
+      email: match[2]?.trim() || "",
+    };
+  }
+  return { email: headerVal.trim() };
+}
+
+function parseEmailAddresses(headerVal?: string): { email: string; name?: string }[] {
+  if (!headerVal) return [];
+  // Split by commas, but ignore commas inside quotes
+  const addresses = headerVal.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/);
+  return addresses.map((addr) => parseEmailAddress(addr));
+}
+
+function getBody(part?: any): string {
+  if (!part) return "";
+  if (part.body?.data) {
+    try {
+      return Buffer.from(part.body.data, "base64url").toString("utf-8");
+    } catch {
+      return "";
+    }
+  }
+  if (part.parts) {
+    for (const subPart of part.parts) {
+      const body = getBody(subPart);
+      if (body) return body;
+    }
+  }
+  return "";
+}
+
+interface ParsedMessage {
+  id: string;
+  threadId: string;
+  from: { email: string; name?: string };
+  to: { email: string; name?: string }[];
+  cc?: { email: string; name?: string }[];
+  subject: string;
+  snippet: string;
+  body: string;
+  isRead: boolean;
+  isStarred: boolean;
+  receivedAt: string;
+  labels: string[];
+}
+
+function parseMessage(msg: any): ParsedMessage {
+  const headers = (msg.payload?.headers as { name?: string; value?: string }[]) ?? [];
+  const getHeader = (name: string) =>
+    headers.find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value;
+
+  return {
+    id: String(msg.id ?? ""),
+    threadId: String(msg.threadId ?? ""),
+    from: parseEmailAddress(getHeader("from")),
+    to: parseEmailAddresses(getHeader("to")),
+    cc: getHeader("cc") ? parseEmailAddresses(getHeader("cc")) : undefined,
+    subject: getHeader("subject") ?? "(no subject)",
+    snippet: String(msg.snippet ?? ""),
+    body: getBody(msg.payload) || msg.snippet || "",
+    isRead: !(msg.labelIds ?? []).includes("UNREAD"),
+    isStarred: (msg.labelIds ?? []).includes("STARRED"),
+    receivedAt: msg.internalDate
+      ? new Date(Number(msg.internalDate)).toISOString()
+      : new Date().toISOString(),
+    labels: (msg.labelIds as string[]) ?? [],
+  };
+}
+
 // ─── Router ──────────────────────────────────────────────────────────────────
 
 export const gmailRouter = router({
@@ -50,8 +127,13 @@ export const gmailRouter = router({
     .input(z.object({ tenantId: z.string() }))
     .output(z.object({ url: z.string() }))
     .query(async ({ input }) => {
-      const authUrl = await corsair.getAuthUrl("gmail", { tenantId: input.tenantId });
-      return { url: authUrl };
+      const baseUrl = process.env.BASE_URL || "http://localhost:8000";
+      const redirectUri = `${baseUrl}/corsair/callback`;
+      const { url } = await generateOAuthUrl(corsair, "gmail", {
+        tenantId: input.tenantId,
+        redirectUri,
+      });
+      return { url };
     }),
 
   // Check if Gmail is connected for a tenant
@@ -61,9 +143,9 @@ export const gmailRouter = router({
     .output(z.object({ connected: z.boolean(), email: z.string().optional() }))
     .query(async ({ input }) => {
       try {
-        const client = corsair.withTenant(input.tenantId);
-        const account = await client.gmail.api.users.getProfile({});
-        return { connected: true, email: account?.emailAddress ?? undefined };
+        const status = await corsair.manage.connectionStatus.get({ tenantId: input.tenantId });
+        const connected = status.gmail === "connected";
+        return { connected, email: connected ? `${input.tenantId}@gmail.com` : undefined };
       } catch {
         return { connected: false };
       }
@@ -89,7 +171,7 @@ export const gmailRouter = router({
     )
     .query(async ({ input }) => {
       const client = corsair.withTenant(input.tenantId);
-      const result = await client.gmail.api.users.threads.list({
+      const result = await client.gmail.api.threads.list({
         labelIds: input.labelIds,
         maxResults: input.maxResults,
         pageToken: input.pageToken,
@@ -121,21 +203,25 @@ export const gmailRouter = router({
     .output(threadSchema)
     .query(async ({ input }) => {
       const client = corsair.withTenant(input.tenantId);
-      const thread = await client.gmail.api.users.threads.get({
+      const thread = await client.gmail.api.threads.get({
         id: input.threadId,
       });
 
+      const parsedMessages: ParsedMessage[] = (thread?.messages ?? []).map(parseMessage);
+      const firstMessage = parsedMessages[0];
+      const lastMessage = parsedMessages[parsedMessages.length - 1];
+
       return {
         id: String(thread?.id ?? input.threadId),
-        subject: String(thread?.subject ?? "(no subject)"),
-        snippet: String(thread?.snippet ?? ""),
-        from: (thread?.from as { email: string; name?: string }) ?? { email: "" },
-        messageCount: Number(thread?.messageCount ?? 0),
-        isRead: Boolean(thread?.isRead ?? false),
-        isStarred: Boolean(thread?.isStarred ?? false),
-        lastMessageAt: String(thread?.lastMessageAt ?? new Date().toISOString()),
-        labels: (thread?.labels as string[]) ?? [],
-        messages: (thread?.messages as typeof emailMessageSchema._type[]) ?? [],
+        subject: String(firstMessage?.subject ?? "(no subject)"),
+        snippet: String(thread?.snippet ?? firstMessage?.snippet ?? ""),
+        from: firstMessage?.from ?? { email: "" },
+        messageCount: parsedMessages.length,
+        isRead: parsedMessages.every((m) => m.isRead),
+        isStarred: parsedMessages.some((m) => m.isStarred),
+        lastMessageAt: lastMessage?.receivedAt ?? new Date().toISOString(),
+        labels: Array.from(new Set(parsedMessages.flatMap((m) => m.labels))),
+        messages: parsedMessages,
       };
     }),
 
@@ -152,7 +238,7 @@ export const gmailRouter = router({
     .output(z.object({ threads: z.array(threadSchema) }))
     .query(async ({ input }) => {
       const client = corsair.withTenant(input.tenantId);
-      const result = await client.gmail.api.users.threads.list({
+      const result = await client.gmail.api.threads.list({
         q: input.query,
         maxResults: input.maxResults,
       });
@@ -190,13 +276,26 @@ export const gmailRouter = router({
     .output(z.object({ messageId: z.string(), success: z.boolean() }))
     .mutation(async ({ input }) => {
       const client = corsair.withTenant(input.tenantId);
-      const result = await client.gmail.api.users.messages.send({
-        to: input.to,
-        cc: input.cc,
-        bcc: input.bcc,
-        subject: input.subject,
-        body: input.body,
-        replyToMessageId: input.replyToMessageId,
+      const headersList: string[] = [];
+      headersList.push(`To: ${input.to.join(", ")}`);
+      if (input.cc && input.cc.length > 0) {
+        headersList.push(`Cc: ${input.cc.join(", ")}`);
+      }
+      if (input.bcc && input.bcc.length > 0) {
+        headersList.push(`Bcc: ${input.bcc.join(", ")}`);
+      }
+      headersList.push(`Subject: ${input.subject}`);
+
+      if (input.replyToMessageId) {
+        headersList.push(`In-Reply-To: ${input.replyToMessageId}`);
+        headersList.push(`References: ${input.replyToMessageId}`);
+      }
+
+      const mimeMessage = headersList.join("\r\n") + "\r\n\r\n" + input.body;
+      const raw = Buffer.from(mimeMessage).toString("base64url");
+
+      const result = await client.gmail.api.messages.send({
+        raw,
         threadId: input.replyToThreadId,
       });
 
@@ -220,10 +319,14 @@ export const gmailRouter = router({
     .output(z.object({ draftId: z.string(), success: z.boolean() }))
     .mutation(async ({ input }) => {
       const client = corsair.withTenant(input.tenantId);
-      const result = await client.gmail.api.users.drafts.create({
-        to: input.to,
-        subject: input.subject,
-        body: input.body,
+      const result = await client.gmail.api.drafts.create({
+        draft: {
+          message: {
+            raw: Buffer.from(
+              `To: ${input.to.join(", ")}\r\nSubject: ${input.subject}\r\n\r\n${input.body}`
+            ).toString("base64url"),
+          },
+        },
       });
 
       return {
@@ -239,7 +342,7 @@ export const gmailRouter = router({
     .output(z.object({ success: z.boolean() }))
     .mutation(async ({ input }) => {
       const client = corsair.withTenant(input.tenantId);
-      await client.gmail.api.users.threads.modify({
+      await client.gmail.api.threads.modify({
         id: input.threadId,
         removeLabelIds: ["INBOX"],
       });
@@ -253,7 +356,7 @@ export const gmailRouter = router({
     .output(z.object({ success: z.boolean() }))
     .mutation(async ({ input }) => {
       const client = corsair.withTenant(input.tenantId);
-      await client.gmail.api.users.threads.modify({
+      await client.gmail.api.threads.modify({
         id: input.threadId,
         removeLabelIds: ["UNREAD"],
       });
@@ -273,7 +376,7 @@ export const gmailRouter = router({
     .output(z.object({ success: z.boolean() }))
     .mutation(async ({ input }) => {
       const client = corsair.withTenant(input.tenantId);
-      await client.gmail.api.users.threads.modify({
+      await client.gmail.api.threads.modify({
         id: input.threadId,
         addLabelIds: input.starred ? ["STARRED"] : [],
         removeLabelIds: input.starred ? [] : ["STARRED"],
@@ -288,7 +391,7 @@ export const gmailRouter = router({
     .output(z.object({ success: z.boolean() }))
     .mutation(async ({ input }) => {
       const client = corsair.withTenant(input.tenantId);
-      await client.gmail.api.users.threads.trash({
+      await client.gmail.api.threads.trash({
         id: input.threadId,
       });
       return { success: true };

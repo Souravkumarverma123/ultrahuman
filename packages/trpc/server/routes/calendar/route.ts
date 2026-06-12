@@ -1,5 +1,5 @@
 import { z } from "../../schema";
-import { corsair } from "@repo/services/corsair";
+import { corsair, generateOAuthUrl } from "@repo/services/corsair";
 import { publicProcedure, router } from "../../trpc";
 import { generatePath } from "../../utils/path-generator";
 
@@ -42,8 +42,13 @@ export const calendarRouter = router({
     .input(z.object({ tenantId: z.string() }))
     .output(z.object({ url: z.string() }))
     .query(async ({ input }) => {
-      const authUrl = await corsair.getAuthUrl("googlecalendar", { tenantId: input.tenantId });
-      return { url: authUrl };
+      const baseUrl = process.env.BASE_URL || "http://localhost:8000";
+      const redirectUri = `${baseUrl}/corsair/callback`;
+      const { url } = await generateOAuthUrl(corsair, "googlecalendar", {
+        tenantId: input.tenantId,
+        redirectUri,
+      });
+      return { url };
     }),
 
   // Check if Google Calendar is connected
@@ -53,12 +58,9 @@ export const calendarRouter = router({
     .output(z.object({ connected: z.boolean(), email: z.string().optional() }))
     .query(async ({ input }) => {
       try {
-        const client = corsair.withTenant(input.tenantId);
-        const calendars = await client.googlecalendar.api.calendarList.list({});
-        const primary = (calendars?.items ?? []).find(
-          (c: Record<string, unknown>) => c.primary === true
-        );
-        return { connected: true, email: String(primary?.id ?? "") };
+        const status = await corsair.manage.connectionStatus.get({ tenantId: input.tenantId });
+        const connected = status.googlecalendar === "connected";
+        return { connected, email: connected ? `${input.tenantId}@googlecalendar` : undefined };
       } catch {
         return { connected: false };
       }
@@ -79,7 +81,7 @@ export const calendarRouter = router({
     .output(z.object({ events: z.array(calendarEventSchema) }))
     .query(async ({ input }) => {
       const client = corsair.withTenant(input.tenantId);
-      const result = await client.googlecalendar.api.events.list({
+      const result = await client.googlecalendar.api.events.getMany({
         calendarId: input.calendarId,
         timeMin: input.timeMin,
         timeMax: input.timeMax,
@@ -99,11 +101,9 @@ export const calendarRouter = router({
           startDateTime: start?.dateTime ?? start?.date ?? new Date().toISOString(),
           endDateTime: end?.dateTime ?? end?.date ?? new Date().toISOString(),
           allDay: Boolean(start?.date && !start?.dateTime),
-          attendees: (e.attendees as typeof attendeeSchema._type[]) ?? [],
+          attendees: (e.attendees as z.infer<typeof attendeeSchema>[]) ?? [],
           organizerEmail: (e.organizer as Record<string, string>)?.email ?? undefined,
-          meetLink: (e.conferenceData as Record<string, string>)?.entryPoints
-            ? String((e.conferenceData as Record<string, unknown[]>).entryPoints?.[0] ?? "")
-            : undefined,
+          meetLink: e.hangoutLink ? String(e.hangoutLink) : undefined,
           status: e.status ? String(e.status) : undefined,
           htmlLink: e.htmlLink ? String(e.htmlLink) : undefined,
           colorId: e.colorId ? String(e.colorId) : undefined,
@@ -129,7 +129,7 @@ export const calendarRouter = router({
       const client = corsair.withTenant(input.tenantId);
       const e = await client.googlecalendar.api.events.get({
         calendarId: input.calendarId,
-        eventId: input.eventId,
+        id: input.eventId,
       }) as Record<string, unknown>;
 
       const start = e.start as Record<string, string> | undefined;
@@ -142,7 +142,7 @@ export const calendarRouter = router({
         startDateTime: start?.dateTime ?? start?.date ?? new Date().toISOString(),
         endDateTime: end?.dateTime ?? end?.date ?? new Date().toISOString(),
         allDay: Boolean(start?.date && !start?.dateTime),
-        attendees: (e.attendees as typeof attendeeSchema._type[]) ?? [],
+        attendees: (e.attendees as z.infer<typeof attendeeSchema>[]) ?? [],
         organizerEmail: (e.organizer as Record<string, string>)?.email ?? undefined,
         status: e.status ? String(e.status) : undefined,
         htmlLink: e.htmlLink ? String(e.htmlLink) : undefined,
@@ -169,18 +169,18 @@ export const calendarRouter = router({
     .output(calendarEventSchema)
     .mutation(async ({ input }) => {
       const client = corsair.withTenant(input.tenantId);
-      const e = await client.googlecalendar.api.events.insert({
+      const e = await client.googlecalendar.api.events.create({
         calendarId: input.calendarId,
-        summary: input.summary,
-        description: input.description,
-        location: input.location,
-        start: { dateTime: input.startDateTime, timeZone: "UTC" },
-        end: { dateTime: input.endDateTime, timeZone: "UTC" },
-        attendees: (input.attendeeEmails ?? []).map((email) => ({ email })),
-        conferenceData: input.addGoogleMeet
-          ? { createRequest: { requestId: crypto.randomUUID() } }
-          : undefined,
+        event: {
+          summary: input.summary,
+          description: input.description,
+          location: input.location,
+          start: { dateTime: input.startDateTime, timeZone: "UTC" },
+          end: { dateTime: input.endDateTime, timeZone: "UTC" },
+          attendees: (input.attendeeEmails ?? []).map((email) => ({ email })),
+        },
         sendNotifications: input.sendNotifications,
+        conferenceDataVersion: input.addGoogleMeet ? 1 : undefined,
       }) as Record<string, unknown>;
 
       const start = e.start as Record<string, string> | undefined;
@@ -192,7 +192,7 @@ export const calendarRouter = router({
         location: e.location ? String(e.location) : undefined,
         startDateTime: start?.dateTime ?? input.startDateTime,
         endDateTime: end?.dateTime ?? input.endDateTime,
-        attendees: (e.attendees as typeof attendeeSchema._type[]) ?? [],
+        attendees: (e.attendees as z.infer<typeof attendeeSchema>[]) ?? [],
         htmlLink: e.htmlLink ? String(e.htmlLink) : undefined,
       };
     }),
@@ -222,28 +222,30 @@ export const calendarRouter = router({
     .mutation(async ({ input }) => {
       const client = corsair.withTenant(input.tenantId);
 
-      // Create the calendar event (Google Calendar automatically sends invites to attendees)
-      const e = await client.googlecalendar.api.events.insert({
+      // Create the calendar event
+      const e = await client.googlecalendar.api.events.create({
         calendarId: "primary",
-        summary: input.summary,
-        description: input.description,
-        location: input.location,
-        start: { dateTime: input.startDateTime, timeZone: "UTC" },
-        end: { dateTime: input.endDateTime, timeZone: "UTC" },
-        attendees: input.attendeeEmails.map((email) => ({ email })),
-        conferenceData: input.addGoogleMeet
-          ? { createRequest: { requestId: crypto.randomUUID() } }
-          : undefined,
+        event: {
+          summary: input.summary,
+          description: input.description,
+          location: input.location,
+          start: { dateTime: input.startDateTime, timeZone: "UTC" },
+          end: { dateTime: input.endDateTime, timeZone: "UTC" },
+          attendees: input.attendeeEmails.map((email) => ({ email })),
+        },
         sendNotifications: true,
-        guestsCanSeeOtherGuests: true,
+        conferenceDataVersion: input.addGoogleMeet ? 1 : undefined,
       }) as Record<string, unknown>;
 
       // Optionally also send a personal email alongside the calendar invite
       if (input.emailBody) {
-        await client.gmail.api.users.messages.send({
-          to: input.attendeeEmails,
-          subject: `Invite: ${input.summary}`,
-          body: input.emailBody,
+        const raw = Buffer.from(
+          `To: ${input.attendeeEmails.join(", ")}\r\n` +
+          `Subject: Invite: ${input.summary}\r\n\r\n` +
+          `${input.emailBody}`
+        ).toString("base64url");
+        await client.gmail.api.messages.send({
+          raw,
         });
       }
 
@@ -257,7 +259,7 @@ export const calendarRouter = router({
           location: e.location ? String(e.location) : undefined,
           startDateTime: start?.dateTime ?? input.startDateTime,
           endDateTime: end?.dateTime ?? input.endDateTime,
-          attendees: (e.attendees as typeof attendeeSchema._type[]) ?? [],
+          attendees: (e.attendees as z.infer<typeof attendeeSchema>[]) ?? [],
           htmlLink: e.htmlLink ? String(e.htmlLink) : undefined,
         },
         emailsSent: Boolean(input.emailBody),
@@ -294,11 +296,11 @@ export const calendarRouter = router({
         patch.attendees = input.attendeeEmails.map((email) => ({ email }));
       }
 
-      await client.googlecalendar.api.events.patch({
+      await client.googlecalendar.api.events.update({
         calendarId: input.calendarId,
-        eventId: input.eventId,
+        id: input.eventId,
         sendNotifications: input.sendNotifications,
-        ...patch,
+        event: patch,
       });
 
       return { success: true };
@@ -320,7 +322,7 @@ export const calendarRouter = router({
       const client = corsair.withTenant(input.tenantId);
       await client.googlecalendar.api.events.delete({
         calendarId: input.calendarId,
-        eventId: input.eventId,
+        id: input.eventId,
         sendNotifications: input.sendNotifications,
       });
       return { success: true };

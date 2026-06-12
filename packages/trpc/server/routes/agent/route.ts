@@ -242,7 +242,7 @@ Format dates and times in a human-friendly way in your responses.`;
           try {
             switch (tc.function.name) {
               case "list_email_threads": {
-                const result = await client.gmail.api.users.threads.list({
+                const result = await client.gmail.api.threads.list({
                   labelIds: (args.labelIds as string[] | undefined) ?? ["INBOX"],
                   q: args.q as string | undefined,
                   maxResults: (args.maxResults as number | undefined) ?? 10,
@@ -252,18 +252,27 @@ Format dates and times in a human-friendly way in your responses.`;
               }
 
               case "send_email": {
-                const result = await client.gmail.api.users.messages.send({
-                  to: args.to as string[],
-                  cc: args.cc as string[] | undefined,
-                  subject: args.subject as string,
-                  body: args.body as string,
+                const toList = args.to as string[];
+                const ccList = args.cc as string[] | undefined;
+                const headersList: string[] = [];
+                headersList.push(`To: ${toList.join(", ")}`);
+                if (ccList && ccList.length > 0) {
+                  headersList.push(`Cc: ${ccList.join(", ")}`);
+                }
+                headersList.push(`Subject: ${args.subject as string}`);
+
+                const mimeMessage = headersList.join("\r\n") + "\r\n\r\n" + (args.body as string);
+                const raw = Buffer.from(mimeMessage).toString("base64url");
+
+                const result = await client.gmail.api.messages.send({
+                  raw,
                 });
                 toolResult = JSON.stringify({ success: true, messageId: result?.id });
                 break;
               }
 
               case "list_calendar_events": {
-                const result = await client.googlecalendar.api.events.list({
+                const result = await client.googlecalendar.api.events.getMany({
                   calendarId: "primary",
                   timeMin: args.timeMin as string,
                   timeMax: args.timeMax as string,
@@ -276,26 +285,29 @@ Format dates and times in a human-friendly way in your responses.`;
               }
 
               case "create_calendar_invite": {
-                const event = await client.googlecalendar.api.events.insert({
+                const event = await client.googlecalendar.api.events.create({
                   calendarId: "primary",
-                  summary: args.summary as string,
-                  description: args.description as string | undefined,
-                  location: args.location as string | undefined,
-                  start: { dateTime: args.startDateTime as string, timeZone: "UTC" },
-                  end: { dateTime: args.endDateTime as string, timeZone: "UTC" },
-                  attendees: ((args.attendeeEmails as string[]) ?? []).map((email) => ({ email })),
-                  conferenceData:
-                    (args.addGoogleMeet as boolean) !== false
-                      ? { createRequest: { requestId: crypto.randomUUID() } }
-                      : undefined,
+                  event: {
+                    summary: args.summary as string,
+                    description: args.description as string | undefined,
+                    location: args.location as string | undefined,
+                    start: { dateTime: args.startDateTime as string, timeZone: "UTC" },
+                    end: { dateTime: args.endDateTime as string, timeZone: "UTC" },
+                    attendees: ((args.attendeeEmails as string[]) ?? []).map((email) => ({ email })),
+                  },
                   sendNotifications: true,
                 });
 
                 if (args.emailBody) {
-                  await client.gmail.api.users.messages.send({
-                    to: args.attendeeEmails as string[],
-                    subject: `Invite: ${args.summary as string}`,
-                    body: args.emailBody as string,
+                  const attendeeEmails = args.attendeeEmails as string[];
+                  const mimeMessage =
+                    `To: ${attendeeEmails.join(", ")}\r\n` +
+                    `Subject: Invite: ${args.summary as string}\r\n\r\n` +
+                    `${args.emailBody as string}`;
+                  const raw = Buffer.from(mimeMessage).toString("base64url");
+
+                  await client.gmail.api.messages.send({
+                    raw,
                   });
                   toolsUsed.push("send_email");
                 }
@@ -305,7 +317,7 @@ Format dates and times in a human-friendly way in your responses.`;
               }
 
               case "search_emails": {
-                const result = await client.gmail.api.users.threads.list({
+                const result = await client.gmail.api.threads.list({
                   q: args.query as string,
                   maxResults: (args.maxResults as number | undefined) ?? 10,
                 });

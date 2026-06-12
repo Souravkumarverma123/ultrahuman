@@ -8,7 +8,7 @@ import { generateOpenApiDocument, createOpenApiExpressMiddleware } from "trpc-to
 import { apiReference } from "@scalar/express-api-reference";
 
 import { serverRouter, createContext } from "@repo/trpc/server";
-import { corsair } from "@repo/services/corsair";
+import { corsair, processOAuthCallback } from "@repo/services/corsair";
 
 import { env } from "./env";
 
@@ -80,9 +80,12 @@ app.get("/corsair/callback", async (req, res) => {
     const params = Object.fromEntries(
       Object.entries(req.query).map(([k, v]) => [k, String(v ?? "")])
     );
-    const result = await (corsair as unknown as {
-      handleOAuthCallback: (p: Record<string, string>) => Promise<{ plugin?: string }>;
-    }).handleOAuthCallback(params);
+    const redirectUri = `${env.BASE_URL}/corsair/callback`;
+    const result = await processOAuthCallback(corsair, {
+      code: params.code,
+      state: params.state,
+      redirectUri,
+    });
 
     const plugin = result?.plugin ?? "unknown";
     logger.info(`[oauth] Connected plugin: ${plugin}`);

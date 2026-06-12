@@ -23,3 +23,5 @@ export const corsair = createCorsair({
 });
 
 export type CorsairInstance = typeof corsair;
+
+export { generateOAuthUrl, processOAuthCallback } from "../node_modules/corsair/dist/oauth";
