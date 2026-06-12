@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
-  Inbox, 
+  Mail, 
   Calendar as CalendarIcon, 
   Bot, 
   Settings as SettingsIcon, 
@@ -83,7 +83,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   });
 
   const navigation = [
-    { name: "Inbox", href: "/inbox", icon: Inbox },
+    { name: "Mail", href: "/inbox", icon: Mail },
     { name: "Calendar", href: "/calendar", icon: CalendarIcon },
     { name: "AI Assistant", href: "/chat", icon: Bot },
     { name: "Settings", href: "/settings", icon: SettingsIcon },
@@ -215,7 +215,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <div>Show Help Dialog</div>
               <div><kbd className="px-1.5 py-0.5 border rounded bg-muted">?</kbd></div>
 
-              <div>Go to Inbox</div>
+              <div>Go to Mail</div>
               <div><kbd className="px-1.5 py-0.5 border rounded bg-muted">g</kbd> then <kbd className="px-1.5 py-0.5 border rounded bg-muted">i</kbd></div>
 
               <div>Go to Calendar</div>
@@ -238,8 +238,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               }}
               className="flex items-center gap-2"
             >
-              <Inbox className="h-4 w-4" />
-              <span>Go to Inbox</span>
+              <Mail className="h-4 w-4" />
+              <span>Go to Mail</span>
             </CommandItem>
             <CommandItem
               onSelect={() => {

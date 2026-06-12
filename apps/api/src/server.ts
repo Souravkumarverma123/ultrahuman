@@ -57,7 +57,7 @@ app.post(
         Object.fromEntries(
           Object.entries(req.headers).map(([k, v]) => [k, String(v ?? "")])
         ),
-        req.body as Buffer,
+        (req.body as Buffer).toString("utf-8"),
         { tenantId },
       );
 
@@ -76,13 +76,12 @@ app.post(
 // ─── Corsair: OAuth callback (Gmail & Calendar connect flow) ──────────────────
 app.get("/corsair/callback", async (req, res) => {
   try {
-    const params = Object.fromEntries(
-      Object.entries(req.query).map(([k, v]) => [k, String(v ?? "")])
-    );
+    const code = String(req.query.code ?? "");
+    const state = String(req.query.state ?? "");
     const redirectUri = `${env.BASE_URL}/corsair/callback`;
     const result = await processOAuthCallback(corsair, {
-      code: params.code,
-      state: params.state,
+      code,
+      state,
       redirectUri,
     });
 

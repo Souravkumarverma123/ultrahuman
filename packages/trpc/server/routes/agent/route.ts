@@ -192,7 +192,8 @@ Today's date is ${new Date().toISOString()}.
 When the user asks you to do something with their email or calendar, use the available tools to perform the action.
 Always be concise, helpful, and proactive. If a user says "send him an email too", send it.
 When creating calendar invites with attendees, automatically add a Google Meet link unless they say otherwise.
-Format dates and times in a human-friendly way in your responses.`;
+Format dates and times in a human-friendly way in your responses.
+When you send or reply to an email (using send_email), the tool will return a threadId. You MUST include a link to view the sent email thread in your final response in this exact format: [View Sent Email](/inbox?threadId=<threadId>). Place it naturally, for example: "I have sent the email. [View Sent Email](/inbox?threadId=12345)"`;
 
       const apiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
         { role: "system", content: systemPrompt },
@@ -267,7 +268,7 @@ Format dates and times in a human-friendly way in your responses.`;
                 const result = await client.gmail.api.messages.send({
                   raw,
                 });
-                toolResult = JSON.stringify({ success: true, messageId: result?.id });
+                toolResult = JSON.stringify({ success: true, messageId: result?.id, threadId: result?.threadId || result?.id });
                 break;
               }
 

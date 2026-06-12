@@ -17,14 +17,25 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 
-type Folder = "INBOX" | "STARRED" | "ARCHIVE" | "TRASH";
+import { useSearchParams } from "next/navigation";
+
+type Folder = "INBOX" | "STARRED" | "SENT" | "ARCHIVE" | "TRASH";
 
 export default function InboxPage() {
   const { tenantId } = useTenant();
+  const searchParams = useSearchParams();
   const [activeFolder, setActiveFolder] = useState<Folder>("INBOX");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
+
+  // Initialize selectedThreadId from searchParams if present
+  useEffect(() => {
+    const threadId = searchParams.get("threadId");
+    if (threadId) {
+      setSelectedThreadId(threadId);
+    }
+  }, [searchParams]);
 
   // Compose / Reply states
   const [toInput, setToInput] = useState("");
@@ -44,6 +55,7 @@ export default function InboxPage() {
   const labelIds = useMemo(() => {
     if (activeFolder === "INBOX") return ["INBOX"];
     if (activeFolder === "STARRED") return ["STARRED"];
+    if (activeFolder === "SENT") return ["SENT"];
     if (activeFolder === "TRASH") return ["TRASH"];
     return []; // Archive has no INBOX label
   }, [activeFolder]);
@@ -308,6 +320,14 @@ export default function InboxPage() {
               }`}
             >
               <Star className="h-4.5 w-4.5" /> Starred
+            </button>
+            <button
+              onClick={() => { setActiveFolder("SENT"); setSelectedThreadId(null); }}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
+                activeFolder === "SENT" ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+              }`}
+            >
+              <Send className="h-4.5 w-4.5" /> Sent
             </button>
             <button
               onClick={() => { setActiveFolder("ARCHIVE"); setSelectedThreadId(null); }}

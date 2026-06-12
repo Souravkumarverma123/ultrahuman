@@ -12,12 +12,66 @@ import { Input } from "~/components/ui/input";
 import { Badge } from "~/components/ui/badge";
 import { Card } from "~/components/ui/card";
 import { toast } from "sonner";
+import Link from "next/link";
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   toolsUsed?: string[];
+}
+
+function parseContentWithLinks(content: string) {
+  // Matches markdown links: [Link Text](url)
+  const regex = /\[([^\]]+)\]\(([^)]+)\)/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(content)) !== null) {
+    const [fullMatch, text, url] = match;
+    const matchIndex = match.index;
+
+    if (!text || !url) continue;
+
+    // Push text before the link
+    if (matchIndex > lastIndex) {
+      parts.push(content.substring(lastIndex, matchIndex));
+    }
+
+    // Push the Link element
+    if (url.startsWith("/")) {
+      parts.push(
+        <Link
+          key={matchIndex}
+          href={url}
+          className="text-primary underline font-semibold hover:text-primary/80 transition-colors inline-flex items-center gap-1 bg-primary/10 px-2 py-0.5 rounded-md hover:bg-primary/20"
+        >
+          {text}
+        </Link>
+      );
+    } else {
+      parts.push(
+        <a
+          key={matchIndex}
+          href={url}
+          className="text-primary underline font-semibold hover:text-primary/80 transition-colors inline-flex items-center gap-1 bg-primary/10 px-2 py-0.5 rounded-md hover:bg-primary/20"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {text}
+        </a>
+      );
+    }
+
+    lastIndex = regex.lastIndex;
+  }
+
+  if (lastIndex < content.length) {
+    parts.push(content.substring(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : content;
 }
 
 export default function ChatPage() {
@@ -173,7 +227,7 @@ export default function ChatPage() {
                       ? "bg-card border-border/80 text-foreground" 
                       : "bg-primary text-primary-foreground border-primary"
                   }`}>
-                    {message.content}
+                    {parseContentWithLinks(message.content)}
                   </div>
 
                   {/* Tool execution display */}
