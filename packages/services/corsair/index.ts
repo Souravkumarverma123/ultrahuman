@@ -1,5 +1,5 @@
 import { Pool } from "pg";
-import { createCorsair } from "corsair";
+import { createCorsair, setupCorsair } from "corsair";
 import { gmail } from "@corsair-dev/gmail";
 import { googlecalendar } from "@corsair-dev/googlecalendar";
 
@@ -25,3 +25,26 @@ export const corsair = createCorsair({
 export type CorsairInstance = typeof corsair;
 
 export { generateOAuthUrl, processOAuthCallback } from "../node_modules/corsair/dist/oauth";
+
+// Automatically setup Corsair integrations with credentials from environment variables
+const googleClientId = process.env.GOOGLE_OAUTH_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
+const googleClientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET;
+
+if (googleClientId && googleClientSecret) {
+  setupCorsair(corsair, {
+    credentials: {
+      gmail: {
+        client_id: googleClientId,
+        client_secret: googleClientSecret,
+      },
+      googlecalendar: {
+        client_id: googleClientId,
+        client_secret: googleClientSecret,
+      },
+    },
+  }).catch((err) => {
+    console.error("Failed to setup Corsair integrations:", err);
+  });
+} else {
+  console.warn("Google OAuth credentials are not set in environment. Gmail and Google Calendar connections will be unavailable.");
+}
