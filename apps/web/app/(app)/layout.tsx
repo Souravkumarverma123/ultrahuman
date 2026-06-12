@@ -12,7 +12,8 @@ import {
   Sparkles,
   Command as CommandIcon,
   Moon,
-  Sun
+  Sun,
+  X
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "~/components/ui/button";
@@ -24,12 +25,62 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
+import { useRouter } from "next/navigation";
+import { useKeyboardShortcuts } from "~/hooks/use-keyboard-shortcuts";
+import {
+  CommandDialog,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+} from "~/components/ui/command";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { tenantId, changeTenant } = useTenant();
   const { theme, setTheme } = useTheme();
+  const router = useRouter();
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [gPressed, setGPressed] = useState(false);
+
+  useKeyboardShortcuts({
+    "?": () => setShowShortcuts(true),
+    "meta+k": () => setShowCommandPalette(prev => !prev),
+    "escape": () => {
+      setShowShortcuts(false);
+      setShowCommandPalette(false);
+    },
+    g: () => {
+      setGPressed(true);
+      setTimeout(() => setGPressed(false), 1000);
+    },
+    i: () => {
+      if (gPressed) {
+        router.push("/inbox");
+        setGPressed(false);
+      }
+    },
+    a: () => {
+      if (gPressed) {
+        router.push("/calendar");
+        setGPressed(false);
+      }
+    },
+    c: () => {
+      if (gPressed) {
+        router.push("/chat");
+        setGPressed(false);
+      }
+    },
+    s: () => {
+      if (gPressed) {
+        router.push("/settings");
+        setGPressed(false);
+      }
+    }
+  });
 
   const navigation = [
     { name: "Inbox", href: "/inbox", icon: Inbox },
@@ -173,6 +224,78 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Command Palette Dialog */}
+      <CommandDialog open={showCommandPalette} onOpenChange={setShowCommandPalette}>
+        <CommandInput placeholder="Type a command or search..." />
+        <CommandList>
+          <CommandEmpty>No results found.</CommandEmpty>
+          <CommandGroup heading="Navigation">
+            <CommandItem
+              onSelect={() => {
+                router.push("/inbox");
+                setShowCommandPalette(false);
+              }}
+              className="flex items-center gap-2"
+            >
+              <Inbox className="h-4 w-4" />
+              <span>Go to Inbox</span>
+            </CommandItem>
+            <CommandItem
+              onSelect={() => {
+                router.push("/calendar");
+                setShowCommandPalette(false);
+              }}
+              className="flex items-center gap-2"
+            >
+              <CalendarIcon className="h-4 w-4" />
+              <span>Go to Calendar</span>
+            </CommandItem>
+            <CommandItem
+              onSelect={() => {
+                router.push("/chat");
+                setShowCommandPalette(false);
+              }}
+              className="flex items-center gap-2"
+            >
+              <Bot className="h-4 w-4" />
+              <span>Go to AI Assistant</span>
+            </CommandItem>
+            <CommandItem
+              onSelect={() => {
+                router.push("/settings");
+                setShowCommandPalette(false);
+              }}
+              className="flex items-center gap-2"
+            >
+              <SettingsIcon className="h-4 w-4" />
+              <span>Go to Settings</span>
+            </CommandItem>
+          </CommandGroup>
+          <CommandGroup heading="Theme">
+            <CommandItem
+              onSelect={() => {
+                setTheme("light");
+                setShowCommandPalette(false);
+              }}
+              className="flex items-center gap-2"
+            >
+              <Sun className="h-4 w-4" />
+              <span>Switch to Light Mode</span>
+            </CommandItem>
+            <CommandItem
+              onSelect={() => {
+                setTheme("dark");
+                setShowCommandPalette(false);
+              }}
+              className="flex items-center gap-2"
+            >
+              <Moon className="h-4 w-4" />
+              <span>Switch to Dark Mode</span>
+            </CommandItem>
+          </CommandGroup>
+        </CommandList>
+      </CommandDialog>
     </div>
   );
 }

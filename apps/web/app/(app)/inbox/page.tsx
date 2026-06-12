@@ -346,7 +346,7 @@ export default function InboxPage() {
       </div>
 
       {/* 2. Threads List (Middle Panel) */}
-      <div className="w-96 border-r border-border bg-card/40 flex flex-col h-full overflow-hidden">
+      <div className={`border-r border-border bg-card/40 flex flex-col h-full overflow-hidden transition-all duration-300 ${selectedThreadId ? "w-96 shrink-0" : "flex-1"}`}>
         {/* Search Header */}
         <div className="p-3 border-b border-border flex gap-2 bg-card/60">
           <div className="relative flex-1">
@@ -442,112 +442,128 @@ export default function InboxPage() {
       </div>
 
       {/* 3. Thread Reading & Detail (Right Panel) */}
-      <div className="flex-1 bg-card flex flex-col h-full overflow-hidden">
-        {selectedThread ? (
-          <>
-            {/* Header controls */}
-            <div className="p-3 border-b border-border flex items-center justify-between bg-muted/10">
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={() => archiveMutation.mutate({ tenantId, threadId: selectedThread.id }, {
-                    onSuccess: () => { toast.success("Thread archived"); setSelectedThreadId(null); threadsQuery.refetch(); }
-                  })}
-                  variant="outline"
-                  size="sm"
-                  className="gap-1 text-xs"
-                >
-                  <Archive className="h-4 w-4" /> Archive <kbd className="text-[10px] opacity-40">e</kbd>
-                </Button>
-                <Button
-                  onClick={() => trashMutation.mutate({ tenantId, threadId: selectedThread.id }, {
-                    onSuccess: () => { toast.success("Moved to Trash"); setSelectedThreadId(null); threadsQuery.refetch(); }
-                  })}
-                  variant="outline"
-                  size="sm"
-                  className="gap-1 text-xs"
-                >
-                  <Trash2 className="h-4 w-4" /> Trash
-                </Button>
-              </div>
-
-              {aiPriorities[selectedThread.id] && (
-                <div className="flex items-center gap-2 text-xs bg-muted/40 px-3 py-1.5 rounded-lg border border-border/60">
-                  <Sparkles className="h-3.5 w-3.5 text-primary" />
-                  <span className="font-semibold text-foreground/80">AI Insight:</span>
-                  <span className="text-muted-foreground italic">"{aiPriorities[selectedThread.id]?.reason}"</span>
-                </div>
-              )}
+      {selectedThreadId !== null && (
+        <div className="flex-1 bg-card flex flex-col h-full overflow-hidden border-l border-border">
+          {threadDetailQuery.isLoading ? (
+            <div className="flex-1 flex flex-col justify-center items-center text-center p-8 text-muted-foreground bg-muted/5">
+              <RefreshCw className="h-8 w-8 animate-spin text-primary mb-3" />
+              <p className="text-sm font-medium">Loading conversation...</p>
             </div>
-
-            {/* Scrollable messages thread */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-muted/5">
-              <div className="border-b border-border/60 pb-4">
-                <h1 className="text-xl font-bold tracking-tight">{selectedThread.subject}</h1>
-              </div>
-
-              {(selectedThread.messages ?? []).map((message, idx) => (
-                <div key={message.id || idx} className="bg-card border border-border/80 rounded-xl shadow-sm p-4 space-y-3">
-                  <div className="flex justify-between items-start">
-                    <div className="flex items-center gap-2">
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary text-sm uppercase">
-                        {(message.from.name || message.from.email).slice(0, 2)}
-                      </div>
-                      <div>
-                        <div className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                          {message.from.name || message.from.email}
-                          <span className="text-xs text-muted-foreground font-normal">
-                            &lt;{message.from.email}&gt;
-                          </span>
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                          To: {message.to.map((t) => t.name || t.email).join(", ")}
-                        </div>
-                      </div>
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(message.receivedAt), { addSuffix: true })}
-                    </span>
-                  </div>
-
-                  <div 
-                    className="text-sm text-foreground/90 leading-relaxed break-words pt-1 space-y-2 whitespace-pre-line"
-                    dangerouslySetInnerHTML={{ __html: message.body || message.snippet }}
-                  />
-                </div>
-              ))}
-            </div>
-
-            {/* Quick Reply Form */}
-            <div className="p-4 border-t border-border bg-card">
-              <form onSubmit={handleReplySubmit} className="space-y-3">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground px-1">
-                  <CornerUpLeft className="h-3.5 w-3.5" />
-                  Reply to <span className="font-semibold">{selectedThread.from.name || selectedThread.from.email}</span>
-                </div>
-                <Textarea
-                  value={replyBodyInput}
-                  onChange={(e) => setReplyBodyInput(e.target.value)}
-                  placeholder="Type your reply here..."
-                  className="min-h-[100px] resize-none text-sm bg-muted/20 border-border/60 focus-visible:ring-1 focus-visible:ring-ring"
-                />
-                <div className="flex justify-end gap-2">
-                  <Button type="submit" disabled={sendEmailMutation.isPending} size="sm" className="gap-1.5 text-xs shadow-sm">
-                    <Send className="h-3.5 w-3.5" /> {sendEmailMutation.isPending ? "Sending..." : "Send Reply"}
+          ) : selectedThread ? (
+            <>
+              {/* Header controls */}
+              <div className="p-3 border-b border-border flex items-center justify-between bg-muted/10">
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={() => setSelectedThreadId(null)}
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground mr-1"
+                    title="Close email reader"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    onClick={() => archiveMutation.mutate({ tenantId, threadId: selectedThread.id }, {
+                      onSuccess: () => { toast.success("Thread archived"); setSelectedThreadId(null); threadsQuery.refetch(); }
+                    })}
+                    variant="outline"
+                    size="sm"
+                    className="gap-1 text-xs"
+                  >
+                    <Archive className="h-4 w-4" /> Archive <kbd className="text-[10px] opacity-40">e</kbd>
+                  </Button>
+                  <Button
+                    onClick={() => trashMutation.mutate({ tenantId, threadId: selectedThread.id }, {
+                      onSuccess: () => { toast.success("Moved to Trash"); setSelectedThreadId(null); threadsQuery.refetch(); }
+                    })}
+                    variant="outline"
+                    size="sm"
+                    className="gap-1 text-xs"
+                  >
+                    <Trash2 className="h-4 w-4" /> Trash
                   </Button>
                 </div>
-              </form>
+
+                {aiPriorities[selectedThread.id] && (
+                  <div className="flex items-center gap-2 text-xs bg-muted/40 px-3 py-1.5 rounded-lg border border-border/60">
+                    <Sparkles className="h-3.5 w-3.5 text-primary" />
+                    <span className="font-semibold text-foreground/80">AI Insight:</span>
+                    <span className="text-muted-foreground italic">"{aiPriorities[selectedThread.id]?.reason}"</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Scrollable messages thread */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-muted/5">
+                <div className="border-b border-border/60 pb-4">
+                  <h1 className="text-xl font-bold tracking-tight">{selectedThread.subject}</h1>
+                </div>
+
+                {(selectedThread.messages ?? []).map((message, idx) => (
+                  <div key={message.id || idx} className="bg-card border border-border/80 rounded-xl shadow-sm p-4 space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center gap-2">
+                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary text-sm uppercase">
+                          {(message.from.name || message.from.email).slice(0, 2)}
+                        </div>
+                        <div>
+                          <div className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                            {message.from.name || message.from.email}
+                            <span className="text-xs text-muted-foreground font-normal">
+                              &lt;{message.from.email}&gt;
+                            </span>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            To: {message.to.map((t) => t.name || t.email).join(", ")}
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDistanceToNow(new Date(message.receivedAt), { addSuffix: true })}
+                      </span>
+                    </div>
+
+                    <div 
+                      className="text-sm text-foreground/90 leading-relaxed break-words pt-1 space-y-2 whitespace-pre-line"
+                      dangerouslySetInnerHTML={{ __html: message.body || message.snippet }}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Quick Reply Form */}
+              <div className="p-4 border-t border-border bg-card">
+                <form onSubmit={handleReplySubmit} className="space-y-3">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground px-1">
+                    <CornerUpLeft className="h-3.5 w-3.5" />
+                    Reply to <span className="font-semibold">{selectedThread.from.name || selectedThread.from.email}</span>
+                  </div>
+                  <Textarea
+                    value={replyBodyInput}
+                    onChange={(e) => setReplyBodyInput(e.target.value)}
+                    placeholder="Type your reply here..."
+                    className="min-h-[100px] resize-none text-sm bg-muted/20 border-border/60 focus-visible:ring-1 focus-visible:ring-ring"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button type="submit" disabled={sendEmailMutation.isPending} size="sm" className="gap-1.5 text-xs shadow-sm">
+                      <Send className="h-3.5 w-3.5" /> {sendEmailMutation.isPending ? "Sending..." : "Send Reply"}
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex flex-col justify-center items-center text-center p-8 text-muted-foreground bg-muted/5">
+              <Mail className="h-12 w-12 text-muted-foreground/40 mb-3 animate-bounce" />
+              <h3 className="font-semibold text-lg text-foreground/80">Thread Not Found</h3>
+              <p className="text-sm max-w-xs mt-1">
+                The selected thread could not be loaded. Please select another thread.
+              </p>
             </div>
-          </>
-        ) : (
-          <div className="flex-1 flex flex-col justify-center items-center text-center p-8 text-muted-foreground">
-            <Mail className="h-12 w-12 text-muted-foreground/40 mb-3 animate-bounce" />
-            <h3 className="font-semibold text-lg text-foreground/80">No Thread Selected</h3>
-            <p className="text-sm max-w-xs mt-1">
-              Select an email thread from the list or use keyboard shortcuts <kbd className="px-1 py-0.5 bg-muted rounded border text-xs">j</kbd> and <kbd className="px-1 py-0.5 bg-muted rounded border text-xs">k</kbd> to navigate.
-            </p>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* Floating Compose Dialog */}
       <Dialog open={composeOpen} onOpenChange={setComposeOpen}>
