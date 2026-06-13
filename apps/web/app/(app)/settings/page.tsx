@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Mail, Calendar as CalendarIcon, CheckCircle2, AlertTriangle, ArrowRight, ShieldCheck, RefreshCw } from "lucide-react";
 import { trpc } from "~/trpc/client";
@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "~/components/ui/button";
 import { toast } from "sonner";
 
-export default function SettingsPage() {
+function SettingsPageContent() {
   const searchParams = useSearchParams();
   const { tenantId } = useTenant();
 
@@ -174,5 +174,19 @@ export default function SettingsPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-full flex-1 items-center justify-center bg-muted/5 text-sm text-muted-foreground">
+          Loading settings...
+        </div>
+      }
+    >
+      <SettingsPageContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { Suspense, useState, useEffect, useMemo, useRef } from "react";
 import { 
   Mail, Inbox as InboxIcon, Archive, Star, Trash2, Search, Send, 
   Sparkles, CornerUpLeft, Plus, CheckCircle, RefreshCw, AlertCircle,
@@ -21,7 +21,7 @@ import { useSearchParams } from "next/navigation";
 
 type Folder = "INBOX" | "STARRED" | "SENT" | "ARCHIVE" | "TRASH";
 
-export default function InboxPage() {
+function InboxPageContent() {
   const { tenantId } = useTenant();
   const searchParams = useSearchParams();
   const [activeFolder, setActiveFolder] = useState<Folder>("INBOX");
@@ -642,5 +642,19 @@ export default function InboxPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function InboxPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-full flex-1 items-center justify-center bg-muted/5 text-sm text-muted-foreground">
+          Loading inbox...
+        </div>
+      }
+    >
+      <InboxPageContent />
+    </Suspense>
   );
 }
