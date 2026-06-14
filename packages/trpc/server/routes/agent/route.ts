@@ -3,6 +3,7 @@ import { corsair } from "@repo/services/corsair";
 import { protectedProcedure, router } from "../../trpc";
 import { generatePath } from "../../utils/path-generator";
 import OpenAI from "openai";
+import { buildCorsairToolDefs } from "@corsair-dev/mcp";
 
 const TAGS = ["Agent"];
 const getPath = generatePath("/agent");
@@ -19,6 +20,69 @@ const chatMessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
   content: z.string(),
 });
+
+// ─── Helper: Convert Zod Shape to OpenAI JSON Schema Parameters ────────────────
+
+function zodShapeToJsonSchema(shape: z.ZodRawShape) {
+  const properties: Record<string, any> = {};
+  const required: string[] = [];
+
+  for (const [key, field] of Object.entries(shape)) {
+    let type = "string";
+    let description = "";
+    let enumValues: string[] | undefined;
+    let isOptional = false;
+
+    let current = field;
+    while (current) {
+      const typeName = (current as any)._def?.typeName;
+      if (typeName === "ZodOptional") {
+        isOptional = true;
+        current = (current as any)._def.innerType;
+      } else if (typeName === "ZodNullable") {
+        current = (current as any)._def.innerType;
+      } else if (typeName === "ZodDefault") {
+        current = (current as any)._def.innerType;
+      } else if (typeName === "ZodEffects") {
+        current = (current as any)._def.schema;
+      } else {
+        break;
+      }
+    }
+
+    const typeName = (current as any)._def?.typeName;
+    description = (current as any).description || (field as any).description || "";
+
+    if (typeName === "ZodEnum") {
+      type = "string";
+      enumValues = (current as any)._def.values;
+    } else if (typeName === "ZodNumber") {
+      type = "number";
+    } else if (typeName === "ZodBoolean") {
+      type = "boolean";
+    } else if (typeName === "ZodArray") {
+      type = "array";
+    } else if (typeName === "ZodObject") {
+      type = "object";
+    }
+
+    properties[key] = {
+      type,
+      ...(description ? { description } : {}),
+      ...(enumValues ? { enum: enumValues } : {}),
+    };
+
+    if (!isOptional) {
+      required.push(key);
+    }
+  }
+
+  return {
+    type: "object",
+    properties,
+    ...(required.length > 0 ? { required } : {}),
+  };
+}
 
 // ─── Router ──────────────────────────────────────────────────────────────────
 
@@ -48,152 +112,65 @@ export const agentRouter = router({
         };
       }
 
-      // Build Corsair tools for OpenAI via the MCP adapter
-      // We define the key Gmail + Calendar operations as OpenAI function tools
-      const tools: OpenAI.Chat.ChatCompletionTool[] = [
-        {
-          type: "function",
-          function: {
-            name: "list_email_threads",
-            description:
-              "List recent email threads from the user's Gmail inbox. Use this to show recent emails or find specific emails.",
-            parameters: {
-              type: "object",
-              properties: {
-                labelIds: {
-                  type: "array",
-                  items: { type: "string" },
-                  description: "Gmail labels to filter by (default: INBOX)",
-                },
-                q: {
-                  type: "string",
-                  description: "Gmail search query, e.g. 'from:john@example.com subject:meeting'",
-                },
-                maxResults: {
-                  type: "number",
-                  description: "Number of threads to return (default: 10)",
-                },
-              },
-            },
-          },
-        },
-        {
-          type: "function",
-          function: {
-            name: "send_email",
-            description:
-              "Send an email via Gmail. Use this when the user asks to send, reply to, or write an email.",
-            parameters: {
-              type: "object",
-              required: ["to", "subject", "body"],
-              properties: {
-                to: {
-                  type: "array",
-                  items: { type: "string" },
-                  description: "List of recipient email addresses",
-                },
-                cc: {
-                  type: "array",
-                  items: { type: "string" },
-                  description: "CC email addresses",
-                },
-                subject: { type: "string", description: "Email subject line" },
-                body: { type: "string", description: "Email body text (HTML supported)" },
-              },
-            },
-          },
-        },
-        {
-          type: "function",
-          function: {
-            name: "list_calendar_events",
-            description:
-              "List upcoming calendar events. Use this to show the user's schedule or check availability.",
-            parameters: {
-              type: "object",
-              required: ["timeMin", "timeMax"],
-              properties: {
-                timeMin: {
-                  type: "string",
-                  description: "Start of range (ISO 8601), e.g. '2024-01-15T00:00:00Z'",
-                },
-                timeMax: {
-                  type: "string",
-                  description: "End of range (ISO 8601), e.g. '2024-01-21T23:59:59Z'",
-                },
-              },
-            },
-          },
-        },
-        {
-          type: "function",
-          function: {
-            name: "create_calendar_invite",
-            description:
-              "Create a Google Calendar event and optionally send an email to attendees. Use this when user wants to schedule a meeting or send a calendar invite.",
-            parameters: {
-              type: "object",
-              required: ["summary", "startDateTime", "endDateTime", "attendeeEmails"],
-              properties: {
-                summary: { type: "string", description: "Event title" },
-                description: { type: "string", description: "Event description" },
-                location: { type: "string", description: "Event location or meeting link" },
-                startDateTime: {
-                  type: "string",
-                  description: "Event start (ISO 8601), e.g. '2024-01-18T09:00:00Z'",
-                },
-                endDateTime: {
-                  type: "string",
-                  description: "Event end (ISO 8601), e.g. '2024-01-18T10:00:00Z'",
-                },
-                attendeeEmails: {
-                  type: "array",
-                  items: { type: "string" },
-                  description: "Email addresses of attendees",
-                },
-                emailBody: {
-                  type: "string",
-                  description:
-                    "Optional: also send this personal email message alongside the calendar invite",
-                },
-                addGoogleMeet: {
-                  type: "boolean",
-                  description: "Whether to add a Google Meet link (default: true)",
-                },
-              },
-            },
-          },
-        },
-        {
-          type: "function",
-          function: {
-            name: "search_emails",
-            description: "Search Gmail using advanced query syntax.",
-            parameters: {
-              type: "object",
-              required: ["query"],
-              properties: {
-                query: {
-                  type: "string",
-                  description:
-                    "Gmail search query, e.g. 'from:boss@company.com has:attachment after:2024/01/01'",
-                },
-                maxResults: { type: "number", description: "Max results (default: 10)" },
-              },
-            },
-          },
-        },
-      ];
+      // Scope corsair to this tenant
+      const client = corsair.withTenant(ctx.session.user.id);
 
-      const systemPrompt = `You are a helpful personal email and calendar assistant with access to the user's Gmail and Google Calendar.
+      // Build official Corsair MCP tools: list_operations, get_schema, run_script
+      const corsairTools = buildCorsairToolDefs({
+        corsair: client,
+        setup: false,
+      });
+
+      // Map Corsair MCP tools to OpenAI functions
+      const tools: OpenAI.Chat.ChatCompletionTool[] = corsairTools.map((def) => ({
+        type: "function",
+        function: {
+          name: def.name,
+          description: def.description,
+          parameters: zodShapeToJsonSchema(def.shape),
+        },
+      }));
+
+      const systemPrompt = `You are a helpful personal email and calendar assistant with access to the user's Gmail and Google Calendar via Corsair.
 
 Today's date is ${new Date().toISOString()}.
 
-When the user asks you to do something with their email or calendar, use the available tools to perform the action.
-Always be concise, helpful, and proactive. If a user says "send him an email too", send it.
-When creating calendar invites with attendees, automatically add a Google Meet link unless they say otherwise.
-Format dates and times in a human-friendly way in your responses.
-When you send or reply to an email (using send_email), the tool will return a threadId. You MUST include a link to view the sent email thread in your final response in this exact format: [View Sent Email](/inbox?threadId=<threadId>). Place it naturally, for example: "I have sent the email. [View Sent Email](/inbox?threadId=12345)"`;
+You have access to the Corsair MCP tools:
+1. list_operations: List available operations under 'gmail' and 'googlecalendar'.
+2. get_schema: Get the parameter schema for any operation path (e.g. 'gmail.api.messages.send').
+3. run_script: Run a JavaScript script with the scoped 'corsair' instance in scope. You MUST use 'run_script' to perform any actions on Gmail or Google Calendar.
+   Example scripts to write:
+   
+   // To list threads:
+   const result = await corsair.gmail.api.threads.list({ maxResults: 10 });
+   return result;
+
+   // To send an email:
+   const headers = [
+     "To: someone@example.com",
+     "Subject: Hello from Corsair"
+   ];
+   const mimeMessage = headers.join("\\r\\n") + "\\r\\n\\r\\n" + "This is the email body content.";
+   const result = await corsair.gmail.api.messages.send({
+     raw: Buffer.from(mimeMessage).toString("base64url")
+   });
+   return result;
+
+   // To create a calendar invite:
+   const result = await corsair.googlecalendar.api.events.create({
+     calendarId: "primary",
+     event: {
+       summary: "Product sync",
+       start: { dateTime: "2026-06-18T09:00:00Z", timeZone: "UTC" },
+       end: { dateTime: "2026-06-18T10:00:00Z", timeZone: "UTC" },
+       attendees: [{ email: "friend@corsair.dev" }]
+     },
+     sendNotifications: true
+   });
+   return result;
+
+Always write clean, modern async JavaScript inside 'run_script' and return the final value.
+When you send or reply to an email, the tool will return a result containing a threadId or id. You MUST include a link to view the sent email thread in your final response in this exact format: [View Sent Email](/inbox?threadId=<threadId>). Place it naturally, for example: "I have sent the email. [View Sent Email](/inbox?threadId=12345)"`;
 
       const apiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
         { role: "system", content: systemPrompt },
@@ -204,10 +181,6 @@ When you send or reply to an email (using send_email), the tool will return a th
       ];
 
       const toolsUsed: string[] = [];
-
-      // Scope corsair to this tenant — required because multiTenancy: true means
-      // the root `corsair` is a CorsairTenantWrapper (no plugin namespaces directly).
-      const client = corsair.withTenant(ctx.session.user.id);
 
       // Agentic loop — allow up to 5 tool call rounds
       for (let round = 0; round < 5; round++) {
@@ -241,99 +214,13 @@ When you send or reply to an email (using send_email), the tool will return a th
           let toolResult = "";
 
           try {
-            switch (tc.function.name) {
-              case "list_email_threads": {
-                const result = await client.gmail.api.threads.list({
-                  labelIds: (args.labelIds as string[] | undefined) ?? ["INBOX"],
-                  q: args.q as string | undefined,
-                  maxResults: (args.maxResults as number | undefined) ?? 10,
-                });
-                toolResult = JSON.stringify(result?.threads?.slice(0, 10) ?? []);
-                break;
-              }
-
-              case "send_email": {
-                const toList = args.to as string[];
-                const ccList = args.cc as string[] | undefined;
-                const headersList: string[] = [];
-                headersList.push(`To: ${toList.join(", ")}`);
-                if (ccList && ccList.length > 0) {
-                  headersList.push(`Cc: ${ccList.join(", ")}`);
-                }
-                headersList.push(`Subject: ${args.subject as string}`);
-
-                const mimeMessage = headersList.join("\r\n") + "\r\n\r\n" + (args.body as string);
-                const raw = Buffer.from(mimeMessage).toString("base64url");
-
-                const result = await client.gmail.api.messages.send({
-                  raw,
-                });
-                toolResult = JSON.stringify({
-                  success: true,
-                  messageId: result?.id,
-                  threadId: result?.threadId || result?.id,
-                });
-                break;
-              }
-
-              case "list_calendar_events": {
-                const result = await client.googlecalendar.api.events.getMany({
-                  calendarId: "primary",
-                  timeMin: args.timeMin as string,
-                  timeMax: args.timeMax as string,
-                  singleEvents: true,
-                  orderBy: "startTime",
-                  maxResults: 20,
-                });
-                toolResult = JSON.stringify(result?.items?.slice(0, 20) ?? []);
-                break;
-              }
-
-              case "create_calendar_invite": {
-                const event = await client.googlecalendar.api.events.create({
-                  calendarId: "primary",
-                  event: {
-                    summary: args.summary as string,
-                    description: args.description as string | undefined,
-                    location: args.location as string | undefined,
-                    start: { dateTime: args.startDateTime as string, timeZone: "UTC" },
-                    end: { dateTime: args.endDateTime as string, timeZone: "UTC" },
-                    attendees: ((args.attendeeEmails as string[]) ?? []).map((email) => ({
-                      email,
-                    })),
-                  },
-                  sendNotifications: true,
-                });
-
-                if (args.emailBody) {
-                  const attendeeEmails = args.attendeeEmails as string[];
-                  const mimeMessage =
-                    `To: ${attendeeEmails.join(", ")}\r\n` +
-                    `Subject: Invite: ${args.summary as string}\r\n\r\n` +
-                    `${args.emailBody as string}`;
-                  const raw = Buffer.from(mimeMessage).toString("base64url");
-
-                  await client.gmail.api.messages.send({
-                    raw,
-                  });
-                  toolsUsed.push("send_email");
-                }
-
-                toolResult = JSON.stringify({ success: true, event });
-                break;
-              }
-
-              case "search_emails": {
-                const result = await client.gmail.api.threads.list({
-                  q: args.query as string,
-                  maxResults: (args.maxResults as number | undefined) ?? 10,
-                });
-                toolResult = JSON.stringify(result?.threads?.slice(0, 10) ?? []);
-                break;
-              }
-
-              default:
-                toolResult = JSON.stringify({ error: "Unknown tool" });
+            const matchedTool = corsairTools.find((t) => t.name === tc.function.name);
+            if (matchedTool) {
+              const res = await matchedTool.handler(args);
+              const textContent = res.content.find((c) => c.type === "text");
+              toolResult = textContent && "text" in textContent ? textContent.text : JSON.stringify(res);
+            } else {
+              toolResult = JSON.stringify({ error: `Tool ${tc.function.name} not found` });
             }
           } catch (err) {
             toolResult = JSON.stringify({ error: String(err) });

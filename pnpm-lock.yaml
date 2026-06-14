@@ -459,6 +459,9 @@ importers:
 
   packages/trpc:
     dependencies:
+      '@corsair-dev/mcp':
+        specifier: ^0.1.22
+        version: 0.1.22(openai@6.42.0(zod@4.3.5))
       '@repo/auth':
         specifier: workspace:*
         version: link:../auth
@@ -8467,7 +8470,7 @@ snapshots:
       kysely: 0.28.17
       kysely-postgres-js: 3.0.0(kysely@0.28.17)
       uuid: 13.0.2
-      zod: 4.3.5
+      zod: 4.4.3
     transitivePeerDependencies:
       - postgres
 
