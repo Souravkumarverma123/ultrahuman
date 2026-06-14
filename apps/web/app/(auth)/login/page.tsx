@@ -1,23 +1,36 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Sparkles, Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
 import { authClient } from "~/lib/auth-client";
 import { Button } from "~/components/ui/button";
 import { toast } from "sonner";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isVerified = searchParams.get("verified") === "true";
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [showResend, setShowResend] = useState(false);
+  const [resendEmail, setResendEmail] = useState("");
+  const [isResending, setIsResending] = useState(false);
+
+  useEffect(() => {
+    if (isVerified) {
+      toast.success("Email verified successfully! Please sign in.");
+    }
+  }, [isVerified]);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setShowResend(false);
 
     const { error } = await authClient.signIn.email({
       email,
@@ -26,11 +39,38 @@ export default function LoginPage() {
     });
 
     if (error) {
-      toast.error(error.message || "Failed to sign in");
+      const isUnverified =
+        error.message?.toLowerCase().includes("verify") ||
+        error.message?.toLowerCase().includes("verification") ||
+        error.code === "EMAIL_NOT_VERIFIED";
+
+      if (isUnverified) {
+        setResendEmail(email);
+        setShowResend(true);
+        toast.error("Your email is not verified yet. Please check your inbox or resend the verification link.");
+      } else {
+        toast.error(error.message || "Failed to sign in");
+      }
       setIsLoading(false);
     } else {
       router.push("/inbox");
     }
+  };
+
+  const handleResendVerification = async () => {
+    setIsResending(true);
+    const { error } = await authClient.sendVerificationEmail({
+      email: resendEmail,
+      callbackURL: window.location.origin + "/login?verified=true",
+    });
+
+    if (error) {
+      toast.error(error.message || "Failed to resend verification email");
+    } else {
+      toast.success("Verification link sent! Please check your inbox.");
+      setShowResend(false);
+    }
+    setIsResending(false);
   };
 
   const handleGoogleLogin = async () => {
@@ -153,6 +193,32 @@ export default function LoginPage() {
             </div>
           </div>
 
+          {showResend && (
+            <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-foreground space-y-3">
+              <p className="font-medium text-destructive">Email Verification Required</p>
+              <p className="text-xs text-muted-foreground leading-relaxed text-left">
+                You must verify your email address before logging in. If you didn't receive the verification email, we can send you another link.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full text-xs"
+                onClick={handleResendVerification}
+                disabled={isResending}
+              >
+                {isResending ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                    Resending...
+                  </>
+                ) : (
+                  "Resend verification email"
+                )}
+              </Button>
+            </div>
+          )}
+
           <Button
             type="submit"
             className="w-full h-11 text-sm font-medium"
@@ -181,5 +247,19 @@ export default function LoginPage() {
         </Link>
       </p>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center p-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

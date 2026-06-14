@@ -425,18 +425,23 @@ function InboxPageContent() {
                     <div className="flex items-center gap-1">
                       {/* Priority Tag */}
                       {ai && (
-                        <Badge 
-                          variant={ai.priority === "High" ? "destructive" : ai.priority === "Medium" ? "default" : "secondary"}
-                          className="text-[10px] px-1.5 py-0 h-4 uppercase font-bold"
+                        <span 
+                          className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider font-mono ${
+                            ai.priority === "High" 
+                              ? "timeline-pill-thinking" 
+                              : ai.priority === "Medium" 
+                              ? "timeline-pill-read" 
+                              : "timeline-pill-grep"
+                          }`}
                           title={ai.reason}
                         >
                           {ai.priority} Priority
-                        </Badge>
+                        </span>
                       )}
                       {!thread.isRead && (
-                        <Badge className="text-[10px] px-1.5 py-0 h-4 bg-blue-500 hover:bg-blue-600 font-bold uppercase">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary text-primary-foreground font-semibold uppercase tracking-wider font-mono">
                           New
-                        </Badge>
+                        </span>
                       )}
                     </div>
 
@@ -521,10 +526,10 @@ function InboxPageContent() {
                 </div>
 
                 {(selectedThread.messages ?? []).map((message, idx) => (
-                  <div key={message.id || idx} className="bg-card border border-border/80 rounded-xl shadow-sm p-4 space-y-3">
+                  <div key={message.id || idx} className="bg-card border border-border rounded-xl p-4 space-y-3">
                     <div className="flex justify-between items-start">
                       <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary text-sm uppercase">
+                        <div className="h-8 w-8 rounded-full bg-muted border border-border flex items-center justify-center font-semibold text-foreground text-xs uppercase">
                           {(message.from.name || message.from.email).slice(0, 2)}
                         </div>
                         <div>

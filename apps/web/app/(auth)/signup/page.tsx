@@ -15,6 +15,8 @@ export default function SignUpPage() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isPendingVerification, setIsPendingVerification] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState("");
 
   const handleEmailSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,14 +26,16 @@ export default function SignUpPage() {
       name,
       email,
       password,
-      callbackURL: "/inbox",
+      callbackURL: window.location.origin + "/login?verified=true",
     });
 
     if (error) {
       toast.error(error.message || "Failed to create account");
       setIsLoading(false);
     } else {
-      router.push("/inbox");
+      setRegisteredEmail(email);
+      setIsPendingVerification(true);
+      setIsLoading(false);
     }
   };
 
@@ -43,6 +47,62 @@ export default function SignUpPage() {
       errorCallbackURL: window.location.origin + "/signup?error=oauth_failed",
     });
   };
+
+  if (isPendingVerification) {
+    return (
+      <div className="space-y-8">
+        {/* Header */}
+        <div className="text-center space-y-3">
+          <div className="inline-flex items-center gap-2">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 border border-primary/20">
+              <Sparkles className="h-5 w-5 text-primary" />
+            </span>
+            <span className="text-xl font-bold bg-gradient-to-r from-primary to-muted-foreground bg-clip-text text-transparent">
+              Ultrahuman
+            </span>
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">
+              Verify your email
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              One last step to secure your account
+            </p>
+          </div>
+        </div>
+
+        {/* Card */}
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-lg shadow-black/5 text-center space-y-6">
+          <div className="flex justify-center">
+            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20 animate-bounce">
+              <Mail className="h-7 w-7" />
+            </span>
+          </div>
+          
+          <div className="space-y-2">
+            <p className="text-sm text-foreground font-medium">
+              We've sent a verification link to:
+            </p>
+            <p className="text-base text-foreground font-bold break-all">
+              {registeredEmail}
+            </p>
+          </div>
+
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Please check your inbox (and spam folder) and click the link to verify your email. Once verified, you will be redirected to log in.
+          </p>
+
+          <Button
+            variant="outline"
+            className="w-full h-11 text-sm font-medium"
+            onClick={() => router.push("/login")}
+          >
+            Go to Sign In
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

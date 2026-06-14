@@ -156,16 +156,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         <div>
           {/* Logo / Header */}
-          <div className={`h-16 px-4 flex items-center ${isCollapsed ? "justify-center" : "gap-2 px-6"} border-b border-border bg-muted/20 transition-all duration-300`}>
-            <Sparkles className="h-6 w-6 text-primary flex-shrink-0 animate-pulse" />
+          <div className={`h-16 px-4 flex items-center ${isCollapsed ? "justify-center" : "gap-2 px-6"} border-b border-border bg-muted/10 transition-all duration-300`}>
+            <Sparkles className="h-5 w-5 text-primary flex-shrink-0" />
             {!isCollapsed && (
-              <span className="font-bold text-xl tracking-tight bg-gradient-to-r from-primary to-muted-foreground bg-clip-text text-transparent whitespace-nowrap overflow-hidden">
+              <span className="font-normal text-base tracking-tight text-foreground whitespace-nowrap overflow-hidden">
                 Ultrahuman
               </span>
             )}
           </div>
-
-          {/* Navigation Links */}
+ 
+           {/* Navigation Links */}
           <nav className="p-3 space-y-1">
             {navigation.map((item) => {
               const isActive = pathname.startsWith(item.href);
@@ -179,7 +179,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     isCollapsed ? "justify-center p-2.5" : "gap-3 px-3 py-2.5"
                   } rounded-lg text-sm font-medium transition-all ${
                     isActive
-                      ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20"
+                      ? "bg-primary text-primary-foreground font-semibold"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   }`}
                 >
@@ -190,22 +190,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             })}
           </nav>
         </div>
-
+ 
         {/* Sidebar Footer */}
         <div className="p-3 border-t border-border bg-muted/10 space-y-4 transition-all duration-300">
           {/* User Info */}
           <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3 px-3"} transition-all duration-300`}>
-            {session.user.image && !imageError ? (
-              <img
-                src={session.user.image}
-                alt={session.user.name}
-                referrerPolicy="no-referrer"
-                onError={() => setImageError(true)}
-                className="h-8 w-8 rounded-full object-cover border border-border flex-shrink-0"
-              />
+            {session.user.image && session.user.image !== "null" && session.user.image !== "undefined" && !imageError ? (
+              <div className="h-8 w-8 rounded-full overflow-hidden border border-border flex-shrink-0 flex items-center justify-center bg-muted">
+                <img
+                  src={session.user.image}
+                  alt={session.user.name ?? "User"}
+                  referrerPolicy="no-referrer"
+                  onError={() => setImageError(true)}
+                  className="h-full w-full object-cover"
+                />
+              </div>
             ) : (
-              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-xs border border-primary/20 flex-shrink-0">
-                {session.user.name?.charAt(0)?.toUpperCase() ?? "U"}
+              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-xs border border-primary/20 flex-shrink-0 uppercase">
+                {session.user.name?.charAt(0) ?? session.user.email?.charAt(0) ?? "U"}
               </div>
             )}
             {!isCollapsed && (
