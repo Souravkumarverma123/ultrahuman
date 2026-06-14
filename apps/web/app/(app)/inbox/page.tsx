@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useEffect, useMemo, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import {
   Mail,
   Inbox as InboxIcon,
@@ -95,6 +95,7 @@ function InboxPageContent() {
   const [subjectInput, setSubjectInput] = useState("");
   const [bodyInput, setBodyInput] = useState("");
   const [replyBodyInput, setReplyBodyInput] = useState("");
+  const markedReadThreadIds = useRef(new Set<string>());
 
   // AI Classification Rationale state (cached locally)
   const [aiPriorities, setAiPriorities] = useState<
@@ -143,6 +144,10 @@ function InboxPageContent() {
 
   const threads = useMemo(() => threadsQuery.data?.threads ?? [], [threadsQuery.data?.threads]);
   const selectedThread = threadDetailQuery.data;
+  const markThreadAsRead = markReadMutation.mutate;
+  const refetchThreads = threadsQuery.refetch;
+  const selectedThreadAutoReadId = selectedThread?.id;
+  const selectedThreadIsRead = selectedThread?.isRead;
 
   // Track currently selected index for keyboard navigation
   const selectedIndex = useMemo(() => {
@@ -224,17 +229,35 @@ function InboxPageContent() {
 
   // Auto-mark as read when thread is opened
   useEffect(() => {
-    if (selectedThread && !selectedThread.isRead) {
-      markReadMutation.mutate(
-        { tenantId, threadId: selectedThread.id },
-        {
-          onSuccess: () => {
-            threadsQuery.refetch();
-          },
+    if (!selectedThreadAutoReadId || selectedThreadIsRead) return;
+    if (markedReadThreadIds.current.has(selectedThreadAutoReadId)) return;
+
+    markedReadThreadIds.current.add(selectedThreadAutoReadId);
+    markThreadAsRead(
+      { tenantId, threadId: selectedThreadAutoReadId },
+      {
+        onSuccess: () => {
+          refetchThreads();
         },
-      );
+        onError: (err) => {
+          markedReadThreadIds.current.delete(selectedThreadAutoReadId);
+          toast.error(`Failed to mark thread as read: ${err.message}`);
+        },
+      },
+    );
+  }, [
+    markThreadAsRead,
+    refetchThreads,
+    selectedThreadAutoReadId,
+    selectedThreadIsRead,
+    tenantId,
+  ]);
+
+  useEffect(() => {
+    if (!selectedThreadId) {
+      markedReadThreadIds.current.clear();
     }
-  }, [markReadMutation, selectedThreadId, selectedThread, tenantId, threadsQuery]);
+  }, [selectedThreadId]);
 
   const handleComposeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
