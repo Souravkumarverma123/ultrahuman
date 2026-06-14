@@ -271,7 +271,7 @@ function ProductMockup() {
 export default function Home() {
   return (
     <main className="landing-page min-h-screen text-[#26251e]">
-      <header className="landing-header">
+      <header className="landing-header sticky top-0 z-30 w-full bg-[#f7f7f4]/90 backdrop-blur-md border-b border-[#e6e5e0]">
         <nav
           className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-6"
           aria-label="Main navigation"
