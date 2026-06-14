@@ -26,6 +26,7 @@ import {
   Zap,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
+import { InfiniteMovingCards } from "~/components/ui/infinite-moving-cards";
 
 const navItems = [
   { label: "Workflow", href: "#workflow" },
@@ -653,6 +654,27 @@ export function LandingContent() {
         </div>
       </section>
 
+      {/* Testimonials Section */}
+      <section className="border-t border-border bg-card py-20 overflow-hidden">
+        <div className="mx-auto w-full max-w-7xl px-6 mb-12 text-center">
+          <span className="badge-pill-tag">WALL OF LOVE</span>
+          <h2 className="display-lg mt-6">
+            Loved by high-performance teams.
+          </h2>
+          <p className="mt-4 text-base text-muted-foreground max-w-2xl mx-auto">
+            See how founders, builders, and operators use Ultrahuman to reclaim hours of their day from email clutter.
+          </p>
+        </div>
+        
+        <div className="flex flex-col antialiased items-center justify-center relative overflow-hidden">
+          <InfiniteMovingCards
+            items={testimonials}
+            direction="left"
+            speed="slow"
+          />
+        </div>
+      </section>
+
       {/* Proof Notes Section */}
       <section className="border-t border-border py-20">
         <div className="mx-auto w-full max-w-7xl px-6 grid gap-12 lg:grid-cols-[0.8fr_1.2fr]">
@@ -772,3 +794,26 @@ export function LandingContent() {
     </div>
   );
 }
+
+const testimonials = [
+  {
+    quote: "With Ultrahuman, I cleared 400 backlogged emails and coordinated three client projects in under an hour. The keyboard layout and instant SSE updates make it feel like an extension of my thoughts.",
+    name: "Sarah Jenkins",
+    title: "Operations Lead at Vanta",
+  },
+  {
+    quote: "No polling lag, no bloated Gmail sidebars. The agent scheduling calendar events directly in the background is the closest thing to having a chief of staff.",
+    name: "David Chen",
+    title: "Founder, ByteScale",
+  },
+  {
+    quote: "The interface is gorgeous, minimal, and incredibly responsive. The real-time webhook-driven push sync is game-changing—I see calendar invites the instant they are sent.",
+    name: "Elena Rostova",
+    title: "Product Designer, Linear",
+  },
+  {
+    quote: "Finally, a productivity app that doesn't treat the keyboard as an afterthought. Command-K, search, compose, and send in single-digit milliseconds.",
+    name: "Marcus Aurelius",
+    title: "Software Architect",
+  },
+];
