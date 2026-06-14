@@ -1,6 +1,6 @@
 import { z } from "../../schema";
 import { corsair, generateOAuthUrl } from "@repo/services/corsair";
-import { publicProcedure, router } from "../../trpc";
+import { protectedProcedure, router } from "../../trpc";
 import { generatePath } from "../../utils/path-generator";
 import type {} from "express-serve-static-core";
 
@@ -50,7 +50,7 @@ function parseEmailAddress(headerVal?: string): { email: string; name?: string }
   const match = headerVal.match(/(.*?)\s*<([^>]+)>/);
   if (match) {
     return {
-      name: match[1]?.replace(/^["']|["']$/g, '').trim() || undefined,
+      name: match[1]?.replace(/^["']|["']$/g, "").trim() || undefined,
       email: match[2]?.trim() || "",
     };
   }
@@ -76,7 +76,7 @@ function extractBody(part?: any): { html?: string; text?: string } {
   }
 
   const mimeType = part.mimeType?.toLowerCase();
-  
+
   if (mimeType === "text/html" && decoded) {
     return { html: decoded };
   }
@@ -195,7 +195,7 @@ async function fetchAndParseThreads(client: any, rawThreads: any[]): Promise<any
           labels: [],
         };
       }
-    })
+    }),
   );
 }
 
@@ -203,37 +203,38 @@ async function fetchAndParseThreads(client: any, rawThreads: any[]): Promise<any
 
 export const gmailRouter = router({
   // Get the OAuth connect URL for Gmail
-  getAuthUrl: publicProcedure
+  getAuthUrl: protectedProcedure
     .meta({ openapi: { method: "GET", path: getPath("/auth-url"), tags: TAGS } })
     .input(z.object({ tenantId: z.string() }))
     .output(z.object({ url: z.string() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx }) => {
+      const tenantId = ctx.session.user.id;
       const baseUrl = process.env.BASE_URL || "http://localhost:8000";
       const redirectUri = `${baseUrl}/corsair/callback`;
       const { url } = await generateOAuthUrl(corsair, "gmail", {
-        tenantId: input.tenantId,
+        tenantId,
         redirectUri,
       });
       return { url };
     }),
 
   // Check if Gmail is connected for a tenant
-  getConnectionStatus: publicProcedure
+  getConnectionStatus: protectedProcedure
     .meta({ openapi: { method: "GET", path: getPath("/connection-status"), tags: TAGS } })
     .input(z.object({ tenantId: z.string() }))
     .output(z.object({ connected: z.boolean(), email: z.string().optional() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx }) => {
       try {
-        const status = await corsair.manage.connectionStatus.get({ tenantId: input.tenantId });
+        const status = await corsair.manage.connectionStatus.get({ tenantId: ctx.session.user.id });
         const connected = status.gmail === "connected";
-        return { connected, email: connected ? `${input.tenantId}@gmail.com` : undefined };
+        return { connected };
       } catch {
         return { connected: false };
       }
     }),
 
   // List email threads
-  listThreads: publicProcedure
+  listThreads: protectedProcedure
     .meta({ openapi: { method: "GET", path: getPath("/threads"), tags: TAGS } })
     .input(
       z.object({
@@ -242,16 +243,16 @@ export const gmailRouter = router({
         maxResults: z.number().optional().default(25),
         pageToken: z.string().optional(),
         q: z.string().optional(), // Gmail search query
-      })
+      }),
     )
     .output(
       z.object({
         threads: z.array(threadSchema),
         nextPageToken: z.string().optional(),
-      })
+      }),
     )
-    .query(async ({ input }) => {
-      const client = corsair.withTenant(input.tenantId);
+    .query(async ({ input, ctx }) => {
+      const client = corsair.withTenant(ctx.session.user.id);
       const result = await client.gmail.api.threads.list({
         labelIds: input.labelIds,
         maxResults: input.maxResults,
@@ -268,12 +269,12 @@ export const gmailRouter = router({
     }),
 
   // Get a single full thread with all messages
-  getThread: publicProcedure
+  getThread: protectedProcedure
     .meta({ openapi: { method: "GET", path: getPath("/threads/:threadId"), tags: TAGS } })
     .input(z.object({ tenantId: z.string(), threadId: z.string() }))
     .output(threadSchema)
-    .query(async ({ input }) => {
-      const client = corsair.withTenant(input.tenantId);
+    .query(async ({ input, ctx }) => {
+      const client = corsair.withTenant(ctx.session.user.id);
       const thread = await client.gmail.api.threads.get({
         id: input.threadId,
       });
@@ -297,18 +298,18 @@ export const gmailRouter = router({
     }),
 
   // Advanced Gmail search
-  searchEmails: publicProcedure
+  searchEmails: protectedProcedure
     .meta({ openapi: { method: "GET", path: getPath("/search"), tags: TAGS } })
     .input(
       z.object({
         tenantId: z.string(),
         query: z.string(),
         maxResults: z.number().optional().default(25),
-      })
+      }),
     )
     .output(z.object({ threads: z.array(threadSchema) }))
-    .query(async ({ input }) => {
-      const client = corsair.withTenant(input.tenantId);
+    .query(async ({ input, ctx }) => {
+      const client = corsair.withTenant(ctx.session.user.id);
       const result = await client.gmail.api.threads.list({
         q: input.query,
         maxResults: input.maxResults,
@@ -320,7 +321,7 @@ export const gmailRouter = router({
     }),
 
   // Send a new email
-  sendEmail: publicProcedure
+  sendEmail: protectedProcedure
     .meta({ openapi: { method: "POST", path: getPath("/send"), tags: TAGS } })
     .input(
       z.object({
@@ -332,11 +333,11 @@ export const gmailRouter = router({
         body: z.string(),
         replyToMessageId: z.string().optional(),
         replyToThreadId: z.string().optional(),
-      })
+      }),
     )
     .output(z.object({ messageId: z.string(), success: z.boolean() }))
-    .mutation(async ({ input }) => {
-      const client = corsair.withTenant(input.tenantId);
+    .mutation(async ({ input, ctx }) => {
+      const client = corsair.withTenant(ctx.session.user.id);
       const headersList: string[] = [];
       headersList.push(`To: ${input.to.join(", ")}`);
       if (input.cc && input.cc.length > 0) {
@@ -367,7 +368,7 @@ export const gmailRouter = router({
     }),
 
   // Create a draft
-  createDraft: publicProcedure
+  createDraft: protectedProcedure
     .meta({ openapi: { method: "POST", path: getPath("/drafts"), tags: TAGS } })
     .input(
       z.object({
@@ -375,16 +376,16 @@ export const gmailRouter = router({
         to: z.array(z.string()),
         subject: z.string(),
         body: z.string(),
-      })
+      }),
     )
     .output(z.object({ draftId: z.string(), success: z.boolean() }))
-    .mutation(async ({ input }) => {
-      const client = corsair.withTenant(input.tenantId);
+    .mutation(async ({ input, ctx }) => {
+      const client = corsair.withTenant(ctx.session.user.id);
       const result = await client.gmail.api.drafts.create({
         draft: {
           message: {
             raw: Buffer.from(
-              `To: ${input.to.join(", ")}\r\nSubject: ${input.subject}\r\n\r\n${input.body}`
+              `To: ${input.to.join(", ")}\r\nSubject: ${input.subject}\r\n\r\n${input.body}`,
             ).toString("base64url"),
           },
         },
@@ -397,12 +398,12 @@ export const gmailRouter = router({
     }),
 
   // Archive a thread (remove from INBOX)
-  archiveThread: publicProcedure
+  archiveThread: protectedProcedure
     .meta({ openapi: { method: "POST", path: getPath("/threads/:threadId/archive"), tags: TAGS } })
     .input(z.object({ tenantId: z.string(), threadId: z.string() }))
     .output(z.object({ success: z.boolean() }))
-    .mutation(async ({ input }) => {
-      const client = corsair.withTenant(input.tenantId);
+    .mutation(async ({ input, ctx }) => {
+      const client = corsair.withTenant(ctx.session.user.id);
       await client.gmail.api.threads.modify({
         id: input.threadId,
         removeLabelIds: ["INBOX"],
@@ -411,12 +412,12 @@ export const gmailRouter = router({
     }),
 
   // Mark a thread as read
-  markAsRead: publicProcedure
+  markAsRead: protectedProcedure
     .meta({ openapi: { method: "POST", path: getPath("/threads/:threadId/read"), tags: TAGS } })
     .input(z.object({ tenantId: z.string(), threadId: z.string() }))
     .output(z.object({ success: z.boolean() }))
-    .mutation(async ({ input }) => {
-      const client = corsair.withTenant(input.tenantId);
+    .mutation(async ({ input, ctx }) => {
+      const client = corsair.withTenant(ctx.session.user.id);
       await client.gmail.api.threads.modify({
         id: input.threadId,
         removeLabelIds: ["UNREAD"],
@@ -425,18 +426,18 @@ export const gmailRouter = router({
     }),
 
   // Star / unstar a thread
-  starThread: publicProcedure
+  starThread: protectedProcedure
     .meta({ openapi: { method: "POST", path: getPath("/threads/:threadId/star"), tags: TAGS } })
     .input(
       z.object({
         tenantId: z.string(),
         threadId: z.string(),
         starred: z.boolean(),
-      })
+      }),
     )
     .output(z.object({ success: z.boolean() }))
-    .mutation(async ({ input }) => {
-      const client = corsair.withTenant(input.tenantId);
+    .mutation(async ({ input, ctx }) => {
+      const client = corsair.withTenant(ctx.session.user.id);
       await client.gmail.api.threads.modify({
         id: input.threadId,
         addLabelIds: input.starred ? ["STARRED"] : [],
@@ -446,12 +447,12 @@ export const gmailRouter = router({
     }),
 
   // Trash a thread
-  trashThread: publicProcedure
+  trashThread: protectedProcedure
     .meta({ openapi: { method: "POST", path: getPath("/threads/:threadId/trash"), tags: TAGS } })
     .input(z.object({ tenantId: z.string(), threadId: z.string() }))
     .output(z.object({ success: z.boolean() }))
-    .mutation(async ({ input }) => {
-      const client = corsair.withTenant(input.tenantId);
+    .mutation(async ({ input, ctx }) => {
+      const client = corsair.withTenant(ctx.session.user.id);
       await client.gmail.api.threads.trash({
         id: input.threadId,
       });

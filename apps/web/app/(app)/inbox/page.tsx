@@ -1,10 +1,25 @@
 "use client";
 
 import React, { Suspense, useState, useEffect, useMemo, useRef } from "react";
-import { 
-  Mail, Inbox as InboxIcon, Archive, Star, Trash2, Search, Send, 
-  Sparkles, CornerUpLeft, Plus, CheckCircle, RefreshCw, AlertCircle,
-  Clock, Keyboard, ChevronDown, Check, X
+import {
+  Mail,
+  Inbox as InboxIcon,
+  Archive,
+  Star,
+  Trash2,
+  Search,
+  Send,
+  Sparkles,
+  CornerUpLeft,
+  Plus,
+  CheckCircle,
+  RefreshCw,
+  AlertCircle,
+  Clock,
+  Keyboard,
+  ChevronDown,
+  Check,
+  X,
 } from "lucide-react";
 import { trpc } from "~/trpc/client";
 import { useTenant } from "~/hooks/use-tenant";
@@ -13,13 +28,58 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
 import { Badge } from "~/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "~/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "~/components/ui/dialog";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 
 import { useSearchParams } from "next/navigation";
 
 type Folder = "INBOX" | "STARRED" | "SENT" | "ARCHIVE" | "TRASH";
+
+function buildEmailSrcDoc(html: string) {
+  return `<!doctype html>
+<html>
+  <head>
+    <base target="_blank" />
+    <meta charset="utf-8" />
+    <style>
+      html, body { margin: 0; padding: 0; color: #111827; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.55; }
+      img { max-width: 100%; height: auto; }
+      a { color: #2563eb; }
+      table { max-width: 100%; }
+    </style>
+  </head>
+  <body>${html}</body>
+</html>`;
+}
+
+function EmailBody({ body, snippet, isHtml }: { body: string; snippet: string; isHtml?: boolean }) {
+  const content = body || snippet;
+
+  if (isHtml) {
+    return (
+      <iframe
+        title="Email HTML body"
+        sandbox=""
+        referrerPolicy="no-referrer"
+        srcDoc={buildEmailSrcDoc(content)}
+        className="h-72 w-full rounded-lg border border-border bg-white"
+      />
+    );
+  }
+
+  return (
+    <div className="text-sm text-foreground/90 leading-relaxed break-words pt-1 space-y-2 whitespace-pre-line">
+      {content}
+    </div>
+  );
+}
 
 function InboxPageContent() {
   const { tenantId } = useTenant();
@@ -44,7 +104,9 @@ function InboxPageContent() {
   const [replyBodyInput, setReplyBodyInput] = useState("");
 
   // AI Classification Rationale state (cached locally)
-  const [aiPriorities, setAiPriorities] = useState<Record<string, { priority: "High" | "Medium" | "Low"; reason: string }>>({});
+  const [aiPriorities, setAiPriorities] = useState<
+    Record<string, { priority: "High" | "Medium" | "Low"; reason: string }>
+  >({});
   const [classifying, setClassifying] = useState(false);
 
   // Check if connected
@@ -62,21 +124,21 @@ function InboxPageContent() {
 
   // If we want archive, we search "has:nouserlabels -in:inbox -in:trash" or similar, or just omit labelIds and Corsair handles it
   const threadsQuery = trpc.gmail.listThreads.useQuery(
-    { 
-      tenantId, 
+    {
+      tenantId,
       labelIds: activeFolder === "ARCHIVE" ? undefined : labelIds,
-      q: searchQuery || undefined 
+      q: searchQuery || undefined,
     },
-    { 
+    {
       enabled: isConnected,
       refetchInterval: 15000, // Sync every 15s
-    }
+    },
   );
 
   // Fetch individual thread
   const threadDetailQuery = trpc.gmail.getThread.useQuery(
     { tenantId, threadId: selectedThreadId ?? "" },
-    { enabled: isConnected && selectedThreadId !== null }
+    { enabled: isConnected && selectedThreadId !== null },
   );
 
   // Mutations
@@ -96,63 +158,66 @@ function InboxPageContent() {
   }, [threads, selectedThreadId]);
 
   // Keyboard Shortcuts Setup
-  const shortcuts = useMemo(() => ({
-    j: () => {
-      if (threads.length === 0) return;
-      const nextIndex = Math.min(selectedIndex + 1, threads.length - 1);
-      const nextThread = threads[nextIndex];
-      if (nextThread) {
-        setSelectedThreadId(nextThread.id);
-      }
-    },
-    k: () => {
-      if (threads.length === 0) return;
-      const prevIndex = Math.max(selectedIndex - 1, 0);
-      const prevThread = threads[prevIndex];
-      if (prevThread) {
-        setSelectedThreadId(prevThread.id);
-      }
-    },
-    e: () => {
-      if (!selectedThreadId) return;
-      archiveMutation.mutate(
-        { tenantId, threadId: selectedThreadId },
-        {
-          onSuccess: () => {
-            toast.success("Thread archived");
-            threadsQuery.refetch();
-            const nextT = threads[selectedIndex + 1];
-            const prevT = threads[selectedIndex - 1];
-            if (selectedIndex < threads.length - 1 && nextT) {
-              setSelectedThreadId(nextT.id);
-            } else if (threads.length > 1 && prevT) {
-              setSelectedThreadId(prevT.id);
-            } else {
-              setSelectedThreadId(null);
-            }
-          }
+  const shortcuts = useMemo(
+    () => ({
+      j: () => {
+        if (threads.length === 0) return;
+        const nextIndex = Math.min(selectedIndex + 1, threads.length - 1);
+        const nextThread = threads[nextIndex];
+        if (nextThread) {
+          setSelectedThreadId(nextThread.id);
         }
-      );
-    },
-    s: () => {
-      if (!selectedThreadId) return;
-      const currentThread = threads.find(t => t.id === selectedThreadId);
-      if (!currentThread) return;
-      const targetStarred = !currentThread.isStarred;
-      starMutation.mutate(
-        { tenantId, threadId: selectedThreadId, starred: targetStarred },
-        {
-          onSuccess: () => {
-            toast.success(targetStarred ? "Starred" : "Unstarred");
-            threadsQuery.refetch();
-          }
+      },
+      k: () => {
+        if (threads.length === 0) return;
+        const prevIndex = Math.max(selectedIndex - 1, 0);
+        const prevThread = threads[prevIndex];
+        if (prevThread) {
+          setSelectedThreadId(prevThread.id);
         }
-      );
-    },
-    c: () => {
-      setComposeOpen(true);
-    }
-  }), [threads, selectedIndex, selectedThreadId, tenantId]);
+      },
+      e: () => {
+        if (!selectedThreadId) return;
+        archiveMutation.mutate(
+          { tenantId, threadId: selectedThreadId },
+          {
+            onSuccess: () => {
+              toast.success("Thread archived");
+              threadsQuery.refetch();
+              const nextT = threads[selectedIndex + 1];
+              const prevT = threads[selectedIndex - 1];
+              if (selectedIndex < threads.length - 1 && nextT) {
+                setSelectedThreadId(nextT.id);
+              } else if (threads.length > 1 && prevT) {
+                setSelectedThreadId(prevT.id);
+              } else {
+                setSelectedThreadId(null);
+              }
+            },
+          },
+        );
+      },
+      s: () => {
+        if (!selectedThreadId) return;
+        const currentThread = threads.find((t) => t.id === selectedThreadId);
+        if (!currentThread) return;
+        const targetStarred = !currentThread.isStarred;
+        starMutation.mutate(
+          { tenantId, threadId: selectedThreadId, starred: targetStarred },
+          {
+            onSuccess: () => {
+              toast.success(targetStarred ? "Starred" : "Unstarred");
+              threadsQuery.refetch();
+            },
+          },
+        );
+      },
+      c: () => {
+        setComposeOpen(true);
+      },
+    }),
+    [threads, selectedIndex, selectedThreadId, tenantId],
+  );
 
   useKeyboardShortcuts(shortcuts);
 
@@ -164,8 +229,8 @@ function InboxPageContent() {
         {
           onSuccess: () => {
             threadsQuery.refetch();
-          }
-        }
+          },
+        },
       );
     }
   }, [selectedThreadId, selectedThread]);
@@ -195,8 +260,8 @@ function InboxPageContent() {
         },
         onError: (err) => {
           toast.error(`Error sending email: ${err.message}`);
-        }
-      }
+        },
+      },
     );
   };
 
@@ -212,8 +277,8 @@ function InboxPageContent() {
       {
         tenantId,
         to: [replyTo],
-        subject: selectedThread.subject.startsWith("Re:") 
-          ? selectedThread.subject 
+        subject: selectedThread.subject.startsWith("Re:")
+          ? selectedThread.subject
           : `Re: ${selectedThread.subject}`,
         body: replyBodyInput,
         replyToThreadId: selectedThread.id,
@@ -227,8 +292,8 @@ function InboxPageContent() {
         },
         onError: (err) => {
           toast.error(`Error sending reply: ${err.message}`);
-        }
-      }
+        },
+      },
     );
   };
 
@@ -237,7 +302,7 @@ function InboxPageContent() {
     if (threads.length === 0) return;
     setClassifying(true);
     toast.info("AI is analyzing priority of emails...");
-    
+
     // Simulate smart classification based on sender/snippet/subject
     const newPriorities: typeof aiPriorities = {};
     for (const thread of threads) {
@@ -249,19 +314,19 @@ function InboxPageContent() {
       let reason = "Routine update or newsletter.";
 
       if (
-        subjectLower.includes("urgent") || 
-        subjectLower.includes("important") || 
-        snippetLower.includes("schedule") || 
+        subjectLower.includes("urgent") ||
+        subjectLower.includes("important") ||
+        snippetLower.includes("schedule") ||
         snippetLower.includes("deadline") ||
-        fromLower.includes("boss") || 
+        fromLower.includes("boss") ||
         fromLower.includes("founder") ||
         fromLower.includes("ceo")
       ) {
         priority = "High";
         reason = "Contains actionable request, meeting schedule, or came from key contact.";
       } else if (
-        subjectLower.includes("meeting") || 
-        subjectLower.includes("check-in") || 
+        subjectLower.includes("meeting") ||
+        subjectLower.includes("check-in") ||
         snippetLower.includes("question")
       ) {
         priority = "Medium";
@@ -285,9 +350,14 @@ function InboxPageContent() {
           </div>
           <h2 className="text-2xl font-bold tracking-tight">Gmail Connection Required</h2>
           <p className="text-muted-foreground">
-            Connect your Gmail integration in settings to start managing your inbox and utilizing AI prioritization.
+            Connect your Gmail integration in settings to start managing your inbox and utilizing AI
+            prioritization.
           </p>
-          <Button onClick={() => window.location.href = "/settings"} size="default" className="mt-2">
+          <Button
+            onClick={() => (window.location.href = "/settings")}
+            size="default"
+            className="mt-2"
+          >
             Configure Integrations
           </Button>
         </div>
@@ -300,47 +370,76 @@ function InboxPageContent() {
       {/* 1. Folders Panel (Thin Left) */}
       <div className="w-56 border-r border-border bg-card flex flex-col justify-between p-3 select-none">
         <div className="space-y-4">
-          <Button onClick={() => setComposeOpen(true)} className="w-full justify-start gap-2 shadow-sm">
-            <Plus className="h-4.5 w-4.5" /> Compose <kbd className="ml-auto text-xs opacity-50">c</kbd>
+          <Button
+            onClick={() => setComposeOpen(true)}
+            className="w-full justify-start gap-2 shadow-sm"
+          >
+            <Plus className="h-4.5 w-4.5" /> Compose{" "}
+            <kbd className="ml-auto text-xs opacity-50">c</kbd>
           </Button>
 
           <div className="space-y-1">
             <button
-              onClick={() => { setActiveFolder("INBOX"); setSelectedThreadId(null); }}
+              onClick={() => {
+                setActiveFolder("INBOX");
+                setSelectedThreadId(null);
+              }}
               className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
-                activeFolder === "INBOX" ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                activeFolder === "INBOX"
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
               }`}
             >
               <InboxIcon className="h-4.5 w-4.5" /> Inbox
             </button>
             <button
-              onClick={() => { setActiveFolder("STARRED"); setSelectedThreadId(null); }}
+              onClick={() => {
+                setActiveFolder("STARRED");
+                setSelectedThreadId(null);
+              }}
               className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
-                activeFolder === "STARRED" ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                activeFolder === "STARRED"
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
               }`}
             >
               <Star className="h-4.5 w-4.5" /> Starred
             </button>
             <button
-              onClick={() => { setActiveFolder("SENT"); setSelectedThreadId(null); }}
+              onClick={() => {
+                setActiveFolder("SENT");
+                setSelectedThreadId(null);
+              }}
               className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
-                activeFolder === "SENT" ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                activeFolder === "SENT"
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
               }`}
             >
               <Send className="h-4.5 w-4.5" /> Sent
             </button>
             <button
-              onClick={() => { setActiveFolder("ARCHIVE"); setSelectedThreadId(null); }}
+              onClick={() => {
+                setActiveFolder("ARCHIVE");
+                setSelectedThreadId(null);
+              }}
               className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
-                activeFolder === "ARCHIVE" ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                activeFolder === "ARCHIVE"
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
               }`}
             >
               <Archive className="h-4.5 w-4.5" /> Archive
             </button>
             <button
-              onClick={() => { setActiveFolder("TRASH"); setSelectedThreadId(null); }}
+              onClick={() => {
+                setActiveFolder("TRASH");
+                setSelectedThreadId(null);
+              }}
               className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
-                activeFolder === "TRASH" ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                activeFolder === "TRASH"
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
               }`}
             >
               <Trash2 className="h-4.5 w-4.5" /> Trash
@@ -366,7 +465,9 @@ function InboxPageContent() {
       </div>
 
       {/* 2. Threads List (Middle Panel) */}
-      <div className={`border-r border-border bg-card/40 flex flex-col h-full overflow-hidden transition-all duration-300 ${selectedThreadId ? "w-96 shrink-0" : "flex-1"}`}>
+      <div
+        className={`border-r border-border bg-card/40 flex flex-col h-full overflow-hidden transition-all duration-300 ${selectedThreadId ? "w-96 shrink-0" : "flex-1"}`}
+      >
         {/* Search Header */}
         <div className="p-3 border-b border-border flex gap-2 bg-card/60">
           <div className="relative flex-1">
@@ -379,7 +480,12 @@ function InboxPageContent() {
               className="pl-9 bg-muted/40 border-border/80 text-sm focus-visible:ring-1 focus-visible:ring-ring"
             />
           </div>
-          <Button onClick={() => threadsQuery.refetch()} variant="outline" size="icon" className="h-9 w-9">
+          <Button
+            onClick={() => threadsQuery.refetch()}
+            variant="outline"
+            size="icon"
+            className="h-9 w-9"
+          >
             <RefreshCw className={`h-4 w-4 ${threadsQuery.isFetching ? "animate-spin" : ""}`} />
           </Button>
         </div>
@@ -425,13 +531,13 @@ function InboxPageContent() {
                     <div className="flex items-center gap-1">
                       {/* Priority Tag */}
                       {ai && (
-                        <span 
+                        <span
                           className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider font-mono ${
-                            ai.priority === "High" 
-                              ? "timeline-pill-thinking" 
-                              : ai.priority === "Medium" 
-                              ? "timeline-pill-read" 
-                              : "timeline-pill-grep"
+                            ai.priority === "High"
+                              ? "timeline-pill-thinking"
+                              : ai.priority === "Medium"
+                                ? "timeline-pill-read"
+                                : "timeline-pill-grep"
                           }`}
                           title={ai.reason}
                         >
@@ -448,15 +554,20 @@ function InboxPageContent() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        starMutation.mutate({
-                          tenantId,
-                          threadId: thread.id,
-                          starred: !thread.isStarred
-                        }, { onSuccess: () => threadsQuery.refetch() });
+                        starMutation.mutate(
+                          {
+                            tenantId,
+                            threadId: thread.id,
+                            starred: !thread.isStarred,
+                          },
+                          { onSuccess: () => threadsQuery.refetch() },
+                        );
                       }}
                       className="text-muted-foreground hover:text-amber-500 transition-colors"
                     >
-                      <Star className={`h-4 w-4 ${thread.isStarred ? "fill-amber-400 text-amber-500" : ""}`} />
+                      <Star
+                        className={`h-4 w-4 ${thread.isStarred ? "fill-amber-400 text-amber-500" : ""}`}
+                      />
                     </button>
                   </div>
                 </div>
@@ -489,19 +600,38 @@ function InboxPageContent() {
                     <X className="h-4 w-4" />
                   </Button>
                   <Button
-                    onClick={() => archiveMutation.mutate({ tenantId, threadId: selectedThread.id }, {
-                      onSuccess: () => { toast.success("Thread archived"); setSelectedThreadId(null); threadsQuery.refetch(); }
-                    })}
+                    onClick={() =>
+                      archiveMutation.mutate(
+                        { tenantId, threadId: selectedThread.id },
+                        {
+                          onSuccess: () => {
+                            toast.success("Thread archived");
+                            setSelectedThreadId(null);
+                            threadsQuery.refetch();
+                          },
+                        },
+                      )
+                    }
                     variant="outline"
                     size="sm"
                     className="gap-1 text-xs"
                   >
-                    <Archive className="h-4 w-4" /> Archive <kbd className="text-[10px] opacity-40">e</kbd>
+                    <Archive className="h-4 w-4" /> Archive{" "}
+                    <kbd className="text-[10px] opacity-40">e</kbd>
                   </Button>
                   <Button
-                    onClick={() => trashMutation.mutate({ tenantId, threadId: selectedThread.id }, {
-                      onSuccess: () => { toast.success("Moved to Trash"); setSelectedThreadId(null); threadsQuery.refetch(); }
-                    })}
+                    onClick={() =>
+                      trashMutation.mutate(
+                        { tenantId, threadId: selectedThread.id },
+                        {
+                          onSuccess: () => {
+                            toast.success("Moved to Trash");
+                            setSelectedThreadId(null);
+                            threadsQuery.refetch();
+                          },
+                        },
+                      )
+                    }
                     variant="outline"
                     size="sm"
                     className="gap-1 text-xs"
@@ -514,7 +644,9 @@ function InboxPageContent() {
                   <div className="flex items-center gap-2 text-xs bg-muted/40 px-3 py-1.5 rounded-lg border border-border/60">
                     <Sparkles className="h-3.5 w-3.5 text-primary" />
                     <span className="font-semibold text-foreground/80">AI Insight:</span>
-                    <span className="text-muted-foreground italic">"{aiPriorities[selectedThread.id]?.reason}"</span>
+                    <span className="text-muted-foreground italic">
+                      "{aiPriorities[selectedThread.id]?.reason}"
+                    </span>
                   </div>
                 )}
               </div>
@@ -526,7 +658,10 @@ function InboxPageContent() {
                 </div>
 
                 {(selectedThread.messages ?? []).map((message, idx) => (
-                  <div key={message.id || idx} className="bg-card border border-border rounded-xl p-4 space-y-3">
+                  <div
+                    key={message.id || idx}
+                    className="bg-card border border-border rounded-xl p-4 space-y-3"
+                  >
                     <div className="flex justify-between items-start">
                       <div className="flex items-center gap-2">
                         <div className="h-8 w-8 rounded-full bg-muted border border-border flex items-center justify-center font-semibold text-foreground text-xs uppercase">
@@ -549,11 +684,10 @@ function InboxPageContent() {
                       </span>
                     </div>
 
-                    <div 
-                      className={message.isHtml 
-                        ? "text-sm text-foreground/90 leading-relaxed break-words pt-1" 
-                        : "text-sm text-foreground/90 leading-relaxed break-words pt-1 space-y-2 whitespace-pre-line"}
-                      dangerouslySetInnerHTML={{ __html: message.body || message.snippet }}
+                    <EmailBody
+                      body={message.body}
+                      snippet={message.snippet}
+                      isHtml={message.isHtml}
                     />
                   </div>
                 ))}
@@ -564,7 +698,10 @@ function InboxPageContent() {
                 <form onSubmit={handleReplySubmit} className="space-y-3">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground px-1">
                     <CornerUpLeft className="h-3.5 w-3.5" />
-                    Reply to <span className="font-semibold">{selectedThread.from.name || selectedThread.from.email}</span>
+                    Reply to{" "}
+                    <span className="font-semibold">
+                      {selectedThread.from.name || selectedThread.from.email}
+                    </span>
                   </div>
                   <Textarea
                     value={replyBodyInput}
@@ -573,8 +710,14 @@ function InboxPageContent() {
                     className="min-h-[100px] resize-none text-sm bg-muted/20 border-border/60 focus-visible:ring-1 focus-visible:ring-ring"
                   />
                   <div className="flex justify-end gap-2">
-                    <Button type="submit" disabled={sendEmailMutation.isPending} size="sm" className="gap-1.5 text-xs shadow-sm">
-                      <Send className="h-3.5 w-3.5" /> {sendEmailMutation.isPending ? "Sending..." : "Send Reply"}
+                    <Button
+                      type="submit"
+                      disabled={sendEmailMutation.isPending}
+                      size="sm"
+                      className="gap-1.5 text-xs shadow-sm"
+                    >
+                      <Send className="h-3.5 w-3.5" />{" "}
+                      {sendEmailMutation.isPending ? "Sending..." : "Send Reply"}
                     </Button>
                   </div>
                 </form>
@@ -615,7 +758,9 @@ function InboxPageContent() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground uppercase">Subject</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase">
+                Subject
+              </label>
               <Input
                 type="text"
                 placeholder="Enter subject line"
@@ -641,8 +786,13 @@ function InboxPageContent() {
               <Button type="button" variant="outline" onClick={() => setComposeOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={sendEmailMutation.isPending} className="gap-1.5 shadow-sm">
-                <Send className="h-4 w-4" /> {sendEmailMutation.isPending ? "Sending..." : "Send Message"}
+              <Button
+                type="submit"
+                disabled={sendEmailMutation.isPending}
+                className="gap-1.5 shadow-sm"
+              >
+                <Send className="h-4 w-4" />{" "}
+                {sendEmailMutation.isPending ? "Sending..." : "Send Message"}
               </Button>
             </DialogFooter>
           </form>

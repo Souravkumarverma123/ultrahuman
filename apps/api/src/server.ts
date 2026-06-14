@@ -32,6 +32,33 @@ app.use(
 // Better Auth needs raw body access — express.json() must come after
 app.all("/api/auth/{*splat}", toNodeHandler(auth));
 
+// ─── Corsair: Webhook handler (Gmail & Calendar real-time push) ───────────────
+// Single endpoint — Corsair auto-routes to the correct plugin handler
+app.post("/webhooks/corsair", express.raw({ type: "*/*" }), async (req, res) => {
+  try {
+    const tenantId = req.query["tenantId"] as string | undefined;
+    const result = await processWebhook(
+      corsair,
+      Object.fromEntries(Object.entries(req.headers).map(([k, v]) => [k, String(v ?? "")])),
+      Buffer.isBuffer(req.body)
+        ? req.body.toString("utf-8")
+        : typeof req.body === "string"
+          ? req.body
+          : JSON.stringify(req.body ?? {}),
+      { tenantId },
+    );
+
+    if (result.plugin) {
+      logger.info(`[webhook] ${result.plugin}.${result.action} for tenant=${tenantId}`);
+    }
+
+    return res.status(200).json(result.response ?? { ok: true });
+  } catch (err) {
+    logger.error("[webhook] Error processing Corsair webhook", { err });
+    return res.status(500).json({ error: "Webhook processing failed" });
+  }
+});
+
 app.use(express.json());
 
 app.get("/", (req, res) => {
@@ -49,35 +76,6 @@ app.get("/openapi.json", (req, res) => {
 
 logger.debug(`docs: ${env.BASE_URL}/docs`);
 app.use("/docs", apiReference({ url: "/openapi.json" }));
-
-// ─── Corsair: Webhook handler (Gmail & Calendar real-time push) ───────────────
-// Single endpoint — Corsair auto-routes to the correct plugin handler
-app.post(
-  "/webhooks/corsair",
-  express.raw({ type: "*/*" }),
-  async (req, res) => {
-    try {
-      const tenantId = req.query["tenantId"] as string | undefined;
-      const result = await processWebhook(
-        corsair,
-        Object.fromEntries(
-          Object.entries(req.headers).map(([k, v]) => [k, String(v ?? "")])
-        ),
-        (req.body as Buffer).toString("utf-8"),
-        { tenantId },
-      );
-
-      if (result.plugin) {
-        logger.info(`[webhook] ${result.plugin}.${result.action} for tenant=${tenantId}`);
-      }
-
-      return res.status(200).json(result.response ?? { ok: true });
-    } catch (err) {
-      logger.error("[webhook] Error processing Corsair webhook", { err });
-      return res.status(500).json({ error: "Webhook processing failed" });
-    }
-  }
-);
 
 // ─── Corsair: OAuth callback (Gmail & Calendar connect flow) ──────────────────
 app.get("/corsair/callback", async (req, res) => {

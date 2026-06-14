@@ -1,6 +1,6 @@
 import { z } from "../../schema";
 import { corsair } from "@repo/services/corsair";
-import { publicProcedure, router } from "../../trpc";
+import { protectedProcedure, router } from "../../trpc";
 import { generatePath } from "../../utils/path-generator";
 import OpenAI from "openai";
 
@@ -23,23 +23,23 @@ const chatMessageSchema = z.object({
 // ─── Router ──────────────────────────────────────────────────────────────────
 
 export const agentRouter = router({
-  chat: publicProcedure
+  chat: protectedProcedure
     .meta({ openapi: { method: "POST", path: getPath("/chat"), tags: TAGS } })
     .input(
       z.object({
         tenantId: z.string(),
         messages: z.array(chatMessageSchema),
         model: z.string().optional().default("gpt-4o"),
-      })
+      }),
     )
     .output(
       z.object({
         reply: z.string(),
         toolsUsed: z.array(z.string()),
         success: z.boolean(),
-      })
+      }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       if (!process.env.OPENAI_API_KEY) {
         return {
           reply: "AI chat is not configured. Please set the OPENAI_API_KEY environment variable.",
@@ -207,7 +207,7 @@ When you send or reply to an email (using send_email), the tool will return a th
 
       // Scope corsair to this tenant — required because multiTenancy: true means
       // the root `corsair` is a CorsairTenantWrapper (no plugin namespaces directly).
-      const client = corsair.withTenant(input.tenantId);
+      const client = corsair.withTenant(ctx.session.user.id);
 
       // Agentic loop — allow up to 5 tool call rounds
       for (let round = 0; round < 5; round++) {
@@ -268,7 +268,11 @@ When you send or reply to an email (using send_email), the tool will return a th
                 const result = await client.gmail.api.messages.send({
                   raw,
                 });
-                toolResult = JSON.stringify({ success: true, messageId: result?.id, threadId: result?.threadId || result?.id });
+                toolResult = JSON.stringify({
+                  success: true,
+                  messageId: result?.id,
+                  threadId: result?.threadId || result?.id,
+                });
                 break;
               }
 
@@ -294,7 +298,9 @@ When you send or reply to an email (using send_email), the tool will return a th
                     location: args.location as string | undefined,
                     start: { dateTime: args.startDateTime as string, timeZone: "UTC" },
                     end: { dateTime: args.endDateTime as string, timeZone: "UTC" },
-                    attendees: ((args.attendeeEmails as string[]) ?? []).map((email) => ({ email })),
+                    attendees: ((args.attendeeEmails as string[]) ?? []).map((email) => ({
+                      email,
+                    })),
                   },
                   sendNotifications: true,
                 });

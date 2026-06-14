@@ -1,6 +1,6 @@
 import { z } from "../../schema";
 import { corsair, generateOAuthUrl } from "@repo/services/corsair";
-import { publicProcedure, router } from "../../trpc";
+import { protectedProcedure, router } from "../../trpc";
 import { generatePath } from "../../utils/path-generator";
 
 const TAGS = ["Calendar"];
@@ -37,37 +37,38 @@ const calendarEventSchema = z.object({
 
 export const calendarRouter = router({
   // Get OAuth connect URL for Google Calendar
-  getAuthUrl: publicProcedure
+  getAuthUrl: protectedProcedure
     .meta({ openapi: { method: "GET", path: getPath("/auth-url"), tags: TAGS } })
     .input(z.object({ tenantId: z.string() }))
     .output(z.object({ url: z.string() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx }) => {
+      const tenantId = ctx.session.user.id;
       const baseUrl = process.env.BASE_URL || "http://localhost:8000";
       const redirectUri = `${baseUrl}/corsair/callback`;
       const { url } = await generateOAuthUrl(corsair, "googlecalendar", {
-        tenantId: input.tenantId,
+        tenantId,
         redirectUri,
       });
       return { url };
     }),
 
   // Check if Google Calendar is connected
-  getConnectionStatus: publicProcedure
+  getConnectionStatus: protectedProcedure
     .meta({ openapi: { method: "GET", path: getPath("/connection-status"), tags: TAGS } })
     .input(z.object({ tenantId: z.string() }))
     .output(z.object({ connected: z.boolean(), email: z.string().optional() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx }) => {
       try {
-        const status = await corsair.manage.connectionStatus.get({ tenantId: input.tenantId });
+        const status = await corsair.manage.connectionStatus.get({ tenantId: ctx.session.user.id });
         const connected = status.googlecalendar === "connected";
-        return { connected, email: connected ? `${input.tenantId}@googlecalendar` : undefined };
+        return { connected };
       } catch {
         return { connected: false };
       }
     }),
 
   // List events in a date range
-  listEvents: publicProcedure
+  listEvents: protectedProcedure
     .meta({ openapi: { method: "GET", path: getPath("/events"), tags: TAGS } })
     .input(
       z.object({
@@ -76,11 +77,11 @@ export const calendarRouter = router({
         timeMax: z.string(), // ISO 8601
         calendarId: z.string().optional().default("primary"),
         maxResults: z.number().optional().default(100),
-      })
+      }),
     )
     .output(z.object({ events: z.array(calendarEventSchema) }))
-    .query(async ({ input }) => {
-      const client = corsair.withTenant(input.tenantId);
+    .query(async ({ input, ctx }) => {
+      const client = corsair.withTenant(ctx.session.user.id);
       const result = await client.googlecalendar.api.events.getMany({
         calendarId: input.calendarId,
         timeMin: input.timeMin,
@@ -115,22 +116,22 @@ export const calendarRouter = router({
     }),
 
   // Get a single event
-  getEvent: publicProcedure
+  getEvent: protectedProcedure
     .meta({ openapi: { method: "GET", path: getPath("/events/:eventId"), tags: TAGS } })
     .input(
       z.object({
         tenantId: z.string(),
         eventId: z.string(),
         calendarId: z.string().optional().default("primary"),
-      })
+      }),
     )
     .output(calendarEventSchema)
-    .query(async ({ input }) => {
-      const client = corsair.withTenant(input.tenantId);
-      const e = await client.googlecalendar.api.events.get({
+    .query(async ({ input, ctx }) => {
+      const client = corsair.withTenant(ctx.session.user.id);
+      const e = (await client.googlecalendar.api.events.get({
         calendarId: input.calendarId,
         id: input.eventId,
-      }) as Record<string, unknown>;
+      })) as Record<string, unknown>;
 
       const start = e.start as Record<string, string> | undefined;
       const end = e.end as Record<string, string> | undefined;
@@ -150,7 +151,7 @@ export const calendarRouter = router({
     }),
 
   // Create a calendar event
-  createEvent: publicProcedure
+  createEvent: protectedProcedure
     .meta({ openapi: { method: "POST", path: getPath("/events"), tags: TAGS } })
     .input(
       z.object({
@@ -164,12 +165,12 @@ export const calendarRouter = router({
         attendeeEmails: z.array(z.string()).optional(),
         addGoogleMeet: z.boolean().optional().default(false),
         sendNotifications: z.boolean().optional().default(true),
-      })
+      }),
     )
     .output(calendarEventSchema)
-    .mutation(async ({ input }) => {
-      const client = corsair.withTenant(input.tenantId);
-      const e = await client.googlecalendar.api.events.create({
+    .mutation(async ({ input, ctx }) => {
+      const client = corsair.withTenant(ctx.session.user.id);
+      const e = (await client.googlecalendar.api.events.create({
         calendarId: input.calendarId,
         event: {
           summary: input.summary,
@@ -181,7 +182,7 @@ export const calendarRouter = router({
         },
         sendNotifications: input.sendNotifications,
         conferenceDataVersion: input.addGoogleMeet ? 1 : undefined,
-      }) as Record<string, unknown>;
+      })) as Record<string, unknown>;
 
       const start = e.start as Record<string, string> | undefined;
       const end = e.end as Record<string, string> | undefined;
@@ -198,7 +199,7 @@ export const calendarRouter = router({
     }),
 
   // Create event AND send an email invite to attendees
-  createInvite: publicProcedure
+  createInvite: protectedProcedure
     .meta({ openapi: { method: "POST", path: getPath("/invite"), tags: TAGS } })
     .input(
       z.object({
@@ -211,19 +212,19 @@ export const calendarRouter = router({
         attendeeEmails: z.array(z.string()),
         emailBody: z.string().optional(),
         addGoogleMeet: z.boolean().optional().default(true),
-      })
+      }),
     )
     .output(
       z.object({
         event: calendarEventSchema,
         emailsSent: z.boolean(),
-      })
+      }),
     )
-    .mutation(async ({ input }) => {
-      const client = corsair.withTenant(input.tenantId);
+    .mutation(async ({ input, ctx }) => {
+      const client = corsair.withTenant(ctx.session.user.id);
 
       // Create the calendar event
-      const e = await client.googlecalendar.api.events.create({
+      const e = (await client.googlecalendar.api.events.create({
         calendarId: "primary",
         event: {
           summary: input.summary,
@@ -235,14 +236,14 @@ export const calendarRouter = router({
         },
         sendNotifications: true,
         conferenceDataVersion: input.addGoogleMeet ? 1 : undefined,
-      }) as Record<string, unknown>;
+      })) as Record<string, unknown>;
 
       // Optionally also send a personal email alongside the calendar invite
       if (input.emailBody) {
         const raw = Buffer.from(
           `To: ${input.attendeeEmails.join(", ")}\r\n` +
-          `Subject: Invite: ${input.summary}\r\n\r\n` +
-          `${input.emailBody}`
+            `Subject: Invite: ${input.summary}\r\n\r\n` +
+            `${input.emailBody}`,
         ).toString("base64url");
         await client.gmail.api.messages.send({
           raw,
@@ -267,7 +268,7 @@ export const calendarRouter = router({
     }),
 
   // Update an event
-  updateEvent: publicProcedure
+  updateEvent: protectedProcedure
     .meta({ openapi: { method: "PUT", path: getPath("/events/:eventId"), tags: TAGS } })
     .input(
       z.object({
@@ -281,11 +282,11 @@ export const calendarRouter = router({
         endDateTime: z.string().optional(),
         attendeeEmails: z.array(z.string()).optional(),
         sendNotifications: z.boolean().optional().default(true),
-      })
+      }),
     )
     .output(z.object({ success: z.boolean() }))
-    .mutation(async ({ input }) => {
-      const client = corsair.withTenant(input.tenantId);
+    .mutation(async ({ input, ctx }) => {
+      const client = corsair.withTenant(ctx.session.user.id);
       const patch: Record<string, unknown> = {};
       if (input.summary) patch.summary = input.summary;
       if (input.description) patch.description = input.description;
@@ -307,7 +308,7 @@ export const calendarRouter = router({
     }),
 
   // Delete an event
-  deleteEvent: publicProcedure
+  deleteEvent: protectedProcedure
     .meta({ openapi: { method: "DELETE", path: getPath("/events/:eventId"), tags: TAGS } })
     .input(
       z.object({
@@ -315,11 +316,11 @@ export const calendarRouter = router({
         eventId: z.string(),
         calendarId: z.string().optional().default("primary"),
         sendNotifications: z.boolean().optional().default(true),
-      })
+      }),
     )
     .output(z.object({ success: z.boolean() }))
-    .mutation(async ({ input }) => {
-      const client = corsair.withTenant(input.tenantId);
+    .mutation(async ({ input, ctx }) => {
+      const client = corsair.withTenant(ctx.session.user.id);
       await client.googlecalendar.api.events.delete({
         calendarId: input.calendarId,
         id: input.eventId,
