@@ -144,6 +144,29 @@
     font-family: "Inter", system-ui, -apple-system, sans-serif;
   }
 
+  .landing-page.dark-landing {
+    --background: #1e1d18 !important;
+    --foreground: #f7f7f4 !important;
+    --card: #262520 !important;
+    --card-foreground: #f7f7f4 !important;
+    --popover: #262520 !important;
+    --popover-foreground: #f7f7f4 !important;
+    --primary: #f54e00 !important;
+    --primary-foreground: #ffffff !important;
+    --secondary: #262520 !important;
+    --secondary-foreground: #f7f7f4 !important;
+    --muted: #2c2b26 !important;
+    --muted-foreground: #a09c92 !important;
+    --accent: #2c2b26 !important;
+    --accent-foreground: #f7f7f4 !important;
+    --border: #383731 !important;
+    --input: #383731 !important;
+    --ring: #f54e00 !important;
+
+    background-color: var(--background) !important;
+    color: var(--foreground) !important;
+  }
+
   /* Display Typography */
   .display-mega {
     font-size: clamp(2.5rem, 6vw, 4.5rem);
