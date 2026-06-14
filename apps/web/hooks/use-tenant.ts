@@ -12,8 +12,10 @@ export function useTenant() {
   return {
     tenantId,
     // changeTenant is no longer needed — tenant is derived from auth session
-    changeTenant: (_id: string) => {
-      console.warn("changeTenant is deprecated. Tenant is now derived from the authenticated session.");
+    changeTenant: () => {
+      console.warn(
+        "changeTenant is deprecated. Tenant is now derived from the authenticated session.",
+      );
     },
   };
 }

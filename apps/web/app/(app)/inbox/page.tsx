@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useState, useEffect, useMemo, useRef } from "react";
+import React, { Suspense, useEffect, useMemo, useState } from "react";
 import {
   Mail,
   Inbox as InboxIcon,
@@ -12,13 +12,7 @@ import {
   Sparkles,
   CornerUpLeft,
   Plus,
-  CheckCircle,
   RefreshCw,
-  AlertCircle,
-  Clock,
-  Keyboard,
-  ChevronDown,
-  Check,
   X,
 } from "lucide-react";
 import { trpc } from "~/trpc/client";
@@ -27,7 +21,6 @@ import { useKeyboardShortcuts } from "~/hooks/use-keyboard-shortcuts";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
-import { Badge } from "~/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -148,7 +141,7 @@ function InboxPageContent() {
   const starMutation = trpc.gmail.starThread.useMutation();
   const trashMutation = trpc.gmail.trashThread.useMutation();
 
-  const threads = threadsQuery.data?.threads ?? [];
+  const threads = useMemo(() => threadsQuery.data?.threads ?? [], [threadsQuery.data?.threads]);
   const selectedThread = threadDetailQuery.data;
 
   // Track currently selected index for keyboard navigation
@@ -216,7 +209,15 @@ function InboxPageContent() {
         setComposeOpen(true);
       },
     }),
-    [threads, selectedIndex, selectedThreadId, tenantId],
+    [
+      archiveMutation,
+      starMutation,
+      threads,
+      selectedIndex,
+      selectedThreadId,
+      tenantId,
+      threadsQuery,
+    ],
   );
 
   useKeyboardShortcuts(shortcuts);
@@ -233,7 +234,7 @@ function InboxPageContent() {
         },
       );
     }
-  }, [selectedThreadId, selectedThread]);
+  }, [markReadMutation, selectedThreadId, selectedThread, tenantId, threadsQuery]);
 
   const handleComposeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -645,7 +646,7 @@ function InboxPageContent() {
                     <Sparkles className="h-3.5 w-3.5 text-primary" />
                     <span className="font-semibold text-foreground/80">AI Insight:</span>
                     <span className="text-muted-foreground italic">
-                      "{aiPriorities[selectedThread.id]?.reason}"
+                      {aiPriorities[selectedThread.id]?.reason}
                     </span>
                   </div>
                 )}

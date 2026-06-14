@@ -62,9 +62,7 @@ export default function SignUpPage() {
             </span>
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              Verify your email
-            </h1>
+            <h1 className="text-2xl font-bold tracking-tight">Verify your email</h1>
             <p className="text-sm text-muted-foreground mt-1">
               One last step to secure your account
             </p>
@@ -78,18 +76,15 @@ export default function SignUpPage() {
               <Mail className="h-7 w-7" />
             </span>
           </div>
-          
+
           <div className="space-y-2">
-            <p className="text-sm text-foreground font-medium">
-              We've sent a verification link to:
-            </p>
-            <p className="text-base text-foreground font-bold break-all">
-              {registeredEmail}
-            </p>
+            <p className="text-sm text-foreground font-medium">We sent a verification link to:</p>
+            <p className="text-base text-foreground font-bold break-all">{registeredEmail}</p>
           </div>
 
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Please check your inbox (and spam folder) and click the link to verify your email. Once verified, you will be redirected to log in.
+            Please check your inbox (and spam folder) and click the link to verify your email. Once
+            verified, you will be redirected to log in.
           </p>
 
           <Button
@@ -117,9 +112,7 @@ export default function SignUpPage() {
           </span>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Create your account
-          </h1>
+          <h1 className="text-2xl font-bold tracking-tight">Create your account</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Get started with Ultrahuman in seconds
           </p>
@@ -175,10 +168,7 @@ export default function SignUpPage() {
         {/* Email/Password Form */}
         <form onSubmit={handleEmailSignUp} className="space-y-4">
           <div className="space-y-2">
-            <label
-              htmlFor="name"
-              className="text-sm font-medium text-foreground"
-            >
+            <label htmlFor="name" className="text-sm font-medium text-foreground">
               Full Name
             </label>
             <div className="relative">
@@ -196,10 +186,7 @@ export default function SignUpPage() {
           </div>
 
           <div className="space-y-2">
-            <label
-              htmlFor="email"
-              className="text-sm font-medium text-foreground"
-            >
+            <label htmlFor="email" className="text-sm font-medium text-foreground">
               Email
             </label>
             <div className="relative">
@@ -217,10 +204,7 @@ export default function SignUpPage() {
           </div>
 
           <div className="space-y-2">
-            <label
-              htmlFor="password"
-              className="text-sm font-medium text-foreground"
-            >
+            <label htmlFor="password" className="text-sm font-medium text-foreground">
               Password
             </label>
             <div className="relative">
@@ -238,11 +222,7 @@ export default function SignUpPage() {
             </div>
           </div>
 
-          <Button
-            type="submit"
-            className="w-full h-11 text-sm font-medium"
-            disabled={isLoading}
-          >
+          <Button type="submit" className="w-full h-11 text-sm font-medium" disabled={isLoading}>
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
@@ -258,10 +238,7 @@ export default function SignUpPage() {
       {/* Footer */}
       <p className="text-center text-sm text-muted-foreground">
         Already have an account?{" "}
-        <Link
-          href="/login"
-          className="font-medium text-primary hover:underline underline-offset-4"
-        >
+        <Link href="/login" className="font-medium text-primary hover:underline underline-offset-4">
           Sign in
         </Link>
       </p>

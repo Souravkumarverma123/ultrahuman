@@ -1,27 +1,49 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import { 
-  Calendar as CalendarIcon, Clock, MapPin, Users, Plus, Trash2, 
-  ChevronLeft, ChevronRight, Video, Sparkles, RefreshCw, Mail, CalendarDays
+import React, { useMemo, useState } from "react";
+import {
+  Calendar as CalendarIcon,
+  Clock,
+  MapPin,
+  Users,
+  Plus,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  Video,
+  Mail,
+  CalendarDays,
 } from "lucide-react";
 import { trpc } from "~/trpc/client";
 import { useTenant } from "~/hooks/use-tenant";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "~/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "~/components/ui/dialog";
 import { toast } from "sonner";
-import { 
-  startOfWeek, endOfWeek, addDays, format, isSameDay, 
-  parseISO, startOfDay, endOfDay, differenceInMinutes, addWeeks, subWeeks
+import {
+  startOfWeek,
+  endOfWeek,
+  addDays,
+  format,
+  isSameDay,
+  parseISO,
+  addWeeks,
+  subWeeks,
 } from "date-fns";
 
 export default function CalendarPage() {
   const { tenantId } = useTenant();
-  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() =>
+    startOfWeek(new Date(), { weekStartsOn: 1 }),
+  );
   const [createOpen, setCreateOpen] = useState(false);
-  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
   // Form states for creating event / invite
   const [summary, setSummary] = useState("");
@@ -52,7 +74,7 @@ export default function CalendarPage() {
       timeMin: weekRange.start.toISOString(),
       timeMax: weekRange.end.toISOString(),
     },
-    { enabled: isConnected, refetchInterval: 20000 }
+    { enabled: isConnected, refetchInterval: 20000 },
   );
 
   // Mutations
@@ -74,7 +96,10 @@ export default function CalendarPage() {
     const startDateTime = new Date(`${startDateStr}T${startTimeStr}:00`).toISOString();
     const endDateTime = new Date(`${endDateStr}T${endTimeStr}:00`).toISOString();
     const attendeeEmails = attendeesInput
-      ? attendeesInput.split(",").map((s) => s.trim()).filter(Boolean)
+      ? attendeesInput
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
       : [];
 
     if (sendCompanionEmail && attendeeEmails.length > 0) {
@@ -99,8 +124,8 @@ export default function CalendarPage() {
           },
           onError: (err) => {
             toast.error(`Error: ${err.message}`);
-          }
-        }
+          },
+        },
       );
     } else {
       // Standard calendar event
@@ -123,8 +148,8 @@ export default function CalendarPage() {
           },
           onError: (err) => {
             toast.error(`Error: ${err.message}`);
-          }
-        }
+          },
+        },
       );
     }
   };
@@ -141,8 +166,8 @@ export default function CalendarPage() {
         },
         onError: (err) => {
           toast.error(`Failed to cancel event: ${err.message}`);
-        }
-      }
+        },
+      },
     );
   };
 
@@ -165,9 +190,14 @@ export default function CalendarPage() {
           </div>
           <h2 className="text-2xl font-bold tracking-tight">Google Calendar Connection Required</h2>
           <p className="text-muted-foreground">
-            Connect your Google Calendar integration in settings to start managing your schedule and sending invites.
+            Connect your Google Calendar integration in settings to start managing your schedule and
+            sending invites.
           </p>
-          <Button onClick={() => window.location.href = "/settings"} size="default" className="mt-2">
+          <Button
+            onClick={() => (window.location.href = "/settings")}
+            size="default"
+            className="mt-2"
+          >
             Configure Integrations
           </Button>
         </div>
@@ -184,19 +214,34 @@ export default function CalendarPage() {
             <CalendarDays className="h-8 w-8 text-primary" /> Weekly Schedule
           </h1>
           <p className="text-muted-foreground mt-1">
-            Displaying week of {format(weekRange.start, "MMMM d, yyyy")} – {format(weekRange.end, "MMMM d, yyyy")}
+            Displaying week of {format(weekRange.start, "MMMM d, yyyy")} –{" "}
+            {format(weekRange.end, "MMMM d, yyyy")}
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           <div className="flex items-center border border-border rounded-lg bg-card overflow-hidden">
-            <Button variant="ghost" size="icon" onClick={() => setCurrentWeekStart(subWeeks(currentWeekStart, 1))} className="h-9 w-9 rounded-none border-r border-border">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setCurrentWeekStart(subWeeks(currentWeekStart, 1))}
+              className="h-9 w-9 rounded-none border-r border-border"
+            >
               <ChevronLeft className="h-4.5 w-4.5" />
             </Button>
-            <Button variant="ghost" onClick={() => setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))} className="h-9 text-xs font-semibold px-3 rounded-none border-r border-border">
+            <Button
+              variant="ghost"
+              onClick={() => setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}
+              className="h-9 text-xs font-semibold px-3 rounded-none border-r border-border"
+            >
               Today
             </Button>
-            <Button variant="ghost" size="icon" onClick={() => setCurrentWeekStart(addWeeks(currentWeekStart, 1))} className="h-9 w-9 rounded-none">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setCurrentWeekStart(addWeeks(currentWeekStart, 1))}
+              className="h-9 w-9 rounded-none"
+            >
               <ChevronRight className="h-4.5 w-4.5" />
             </Button>
           </div>
@@ -214,8 +259,8 @@ export default function CalendarPage() {
           {weekDays.map((day, idx) => {
             const isToday = isSameDay(day, new Date());
             return (
-              <div 
-                key={idx} 
+              <div
+                key={idx}
                 className={`p-3 text-center border-r border-border/60 last:border-r-0 flex flex-col items-center gap-1 ${
                   isToday ? "bg-primary/5 dark:bg-primary/2.5" : ""
                 }`}
@@ -223,9 +268,11 @@ export default function CalendarPage() {
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   {format(day, "eee")}
                 </span>
-                <span className={`text-lg font-bold h-8 w-8 rounded-full flex items-center justify-center ${
-                  isToday ? "bg-primary text-primary-foreground shadow-sm" : "text-foreground"
-                }`}>
+                <span
+                  className={`text-lg font-bold h-8 w-8 rounded-full flex items-center justify-center ${
+                    isToday ? "bg-primary text-primary-foreground shadow-sm" : "text-foreground"
+                  }`}
+                >
                   {format(day, "d")}
                 </span>
               </div>
@@ -239,8 +286,8 @@ export default function CalendarPage() {
             const dayEvents = events.filter((e) => isSameDay(parseISO(e.startDateTime), day));
 
             return (
-              <div 
-                key={colIdx} 
+              <div
+                key={colIdx}
                 className="p-3.5 space-y-3.5 min-h-full hover:bg-muted/10 transition-colors relative"
                 onClick={() => {
                   setStartDateStr(format(day, "yyyy-MM-dd"));
@@ -250,7 +297,9 @@ export default function CalendarPage() {
               >
                 {dayEvents.length === 0 ? (
                   <div className="absolute inset-0 flex items-center justify-center select-none pointer-events-none opacity-20">
-                    <span className="text-xs font-medium italic text-muted-foreground">Empty spot</span>
+                    <span className="text-xs font-medium italic text-muted-foreground">
+                      Empty spot
+                    </span>
                   </div>
                 ) : (
                   dayEvents.map((event) => {
@@ -286,7 +335,10 @@ export default function CalendarPage() {
                           </div>
 
                           {event.location && (
-                            <div className="flex items-center gap-1 truncate" title={event.location}>
+                            <div
+                              className="flex items-center gap-1 truncate"
+                              title={event.location}
+                            >
                               <MapPin className="h-3 w-3 shrink-0" />
                               <span className="truncate">{event.location}</span>
                             </div>
@@ -331,7 +383,9 @@ export default function CalendarPage() {
 
           <form onSubmit={handleCreateSubmit} className="space-y-4 pt-2">
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground uppercase">Event Title</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase">
+                Event Title
+              </label>
               <Input
                 type="text"
                 placeholder="Product Demo, Sync with Client, etc."
@@ -344,7 +398,9 @@ export default function CalendarPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground uppercase">Start Date</label>
+                <label className="text-xs font-semibold text-muted-foreground uppercase">
+                  Start Date
+                </label>
                 <Input
                   type="date"
                   value={startDateStr}
@@ -354,7 +410,9 @@ export default function CalendarPage() {
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground uppercase">Start Time</label>
+                <label className="text-xs font-semibold text-muted-foreground uppercase">
+                  Start Time
+                </label>
                 <Input
                   type="time"
                   value={startTimeStr}
@@ -367,7 +425,9 @@ export default function CalendarPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground uppercase">End Date</label>
+                <label className="text-xs font-semibold text-muted-foreground uppercase">
+                  End Date
+                </label>
                 <Input
                   type="date"
                   value={endDateStr}
@@ -377,7 +437,9 @@ export default function CalendarPage() {
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground uppercase">End Time</label>
+                <label className="text-xs font-semibold text-muted-foreground uppercase">
+                  End Time
+                </label>
                 <Input
                   type="time"
                   value={endTimeStr}
@@ -389,7 +451,9 @@ export default function CalendarPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground uppercase">Attendees</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase">
+                Attendees
+              </label>
               <Input
                 type="text"
                 placeholder="colleague@company.com, client@partner.com"
@@ -400,7 +464,9 @@ export default function CalendarPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground uppercase">Location / Virtual Meeting</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase">
+                Location / Virtual Meeting
+              </label>
               <Input
                 type="text"
                 placeholder="Meeting Room A / Google Meet auto-generated"
@@ -421,7 +487,8 @@ export default function CalendarPage() {
                     className="rounded border-border text-primary focus:ring-primary h-4 w-4"
                   />
                   <span className="text-xs font-bold text-foreground/80 flex items-center gap-1">
-                    <Mail className="h-3.5 w-3.5 text-primary" /> Send Companion Email Invite Alongside Calendar Event
+                    <Mail className="h-3.5 w-3.5 text-primary" /> Send Companion Email Invite
+                    Alongside Calendar Event
                   </span>
                 </label>
 
@@ -440,12 +507,14 @@ export default function CalendarPage() {
               <Button type="button" variant="outline" onClick={resetForm}>
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={createEventMutation.isPending || createInviteMutation.isPending}
                 className="shadow-sm"
               >
-                {createEventMutation.isPending || createInviteMutation.isPending ? "Scheduling..." : "Schedule"}
+                {createEventMutation.isPending || createInviteMutation.isPending
+                  ? "Scheduling..."
+                  : "Schedule"}
               </Button>
             </DialogFooter>
           </form>

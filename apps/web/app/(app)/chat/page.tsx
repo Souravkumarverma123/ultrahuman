@@ -1,10 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { 
-  Bot, User, Send, Sparkles, RefreshCw, Command, 
-  HelpCircle, Calendar, Mail, FileText, CheckCircle2
-} from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { Bot, User, Send, RefreshCw, Calendar, Mail, FileText, CheckCircle2 } from "lucide-react";
 import { trpc } from "~/trpc/client";
 import { useTenant } from "~/hooks/use-tenant";
 import { Button } from "~/components/ui/button";
@@ -29,7 +26,7 @@ function parseContentWithLinks(content: string) {
   let match;
 
   while ((match = regex.exec(content)) !== null) {
-    const [fullMatch, text, url] = match;
+    const [, text, url] = match;
     const matchIndex = match.index;
 
     if (!text || !url) continue;
@@ -48,7 +45,7 @@ function parseContentWithLinks(content: string) {
           className="text-primary underline font-semibold hover:text-primary/80 transition-colors inline-flex items-center gap-1 bg-primary/10 px-2 py-0.5 rounded-md hover:bg-primary/20"
         >
           {text}
-        </Link>
+        </Link>,
       );
     } else {
       parts.push(
@@ -60,7 +57,7 @@ function parseContentWithLinks(content: string) {
           rel="noopener noreferrer"
         >
           {text}
-        </a>
+        </a>,
       );
     }
 
@@ -81,7 +78,8 @@ export default function ChatPage() {
     {
       id: "welcome",
       role: "assistant",
-      content: "Hello! I am your AI Orchestrator. I have full access to your connected Gmail and Google Calendar via Corsair.\n\nYou can ask me to search or draft emails, look up your weekly schedule, or coordinate invites (e.g. 'Schedule a sync with sourav@example.com for tomorrow at 10 AM and send him an email too'). How can I help you today?",
+      content:
+        "Hello! I am your AI Orchestrator. I have full access to your connected Gmail and Google Calendar via Corsair.\n\nYou can ask me to search or draft emails, look up your weekly schedule, or coordinate invites (e.g. 'Schedule a sync with sourav@example.com for tomorrow at 10 AM and send him an email too'). How can I help you today?",
     },
   ]);
 
@@ -111,12 +109,10 @@ export default function ChatPage() {
     setMessages((prev) => [...prev, userMessage]);
 
     // Format message history for tRPC schema
-    const messageHistory = messages
-      .concat(userMessage)
-      .map((m) => ({
-        role: m.role,
-        content: m.content,
-      }));
+    const messageHistory = messages.concat(userMessage).map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
 
     try {
       const response = await agentChatMutation.mutateAsync({
@@ -144,14 +140,15 @@ export default function ChatPage() {
           },
         ]);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown error";
       toast.error("Error communicating with AI Agent");
       setMessages((prev) => [
         ...prev,
         {
           id: crypto.randomUUID(),
           role: "assistant",
-          content: `I encountered an error while trying to process that request: ${err.message}. Please verify your API keys and connection status.`,
+          content: `I encountered an error while trying to process that request: ${message}. Please verify your API keys and connection status.`,
         },
       ]);
     }
@@ -214,19 +211,25 @@ export default function ChatPage() {
                 className={`flex gap-4 items-start ${isBot ? "" : "flex-row-reverse"}`}
               >
                 {/* Avatar */}
-                <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 border shadow-sm ${
-                  isBot ? "bg-primary/10 border-primary/20 text-primary" : "bg-muted border-border text-foreground"
-                }`}>
+                <div
+                  className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 border shadow-sm ${
+                    isBot
+                      ? "bg-primary/10 border-primary/20 text-primary"
+                      : "bg-muted border-border text-foreground"
+                  }`}
+                >
                   {isBot ? <Bot className="h-4.5 w-4.5" /> : <User className="h-4.5 w-4.5" />}
                 </div>
 
                 {/* Message Body */}
                 <div className="space-y-2 max-w-[80%]">
-                  <div className={`p-4 rounded-2xl shadow-sm border text-sm leading-relaxed whitespace-pre-wrap ${
-                    isBot 
-                      ? "bg-card border-border/80 text-foreground" 
-                      : "bg-primary text-primary-foreground border-primary"
-                  }`}>
+                  <div
+                    className={`p-4 rounded-2xl shadow-sm border text-sm leading-relaxed whitespace-pre-wrap ${
+                      isBot
+                        ? "bg-card border-border/80 text-foreground"
+                        : "bg-primary text-primary-foreground border-primary"
+                    }`}
+                  >
                     {parseContentWithLinks(message.content)}
                   </div>
 
@@ -240,7 +243,7 @@ export default function ChatPage() {
                           className="text-[10px] font-mono px-2 py-0.5 bg-muted/50 border border-border/60 text-muted-foreground flex items-center gap-1"
                         >
                           <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                          corsair_mcp:{tool}
+                          corsair_tool:{tool}
                         </Badge>
                       ))}
                     </div>
@@ -258,7 +261,9 @@ export default function ChatPage() {
               </div>
               <div className="p-4 bg-card border border-border/80 rounded-2xl shadow-sm max-w-[80%] flex items-center gap-2.5">
                 <RefreshCw className="h-4.5 w-4.5 animate-spin text-primary" />
-                <span className="text-sm text-muted-foreground">Thinking and calling Corsair tools...</span>
+                <span className="text-sm text-muted-foreground">
+                  Thinking and calling Corsair tools...
+                </span>
               </div>
             </div>
           )}
@@ -309,7 +314,11 @@ export default function ChatPage() {
               disabled={agentChatMutation.isPending}
               className="flex-1 bg-muted/20 border-border/80 text-sm focus-visible:ring-1 focus-visible:ring-ring"
             />
-            <Button type="submit" disabled={agentChatMutation.isPending || !input.trim()} className="shadow-sm">
+            <Button
+              type="submit"
+              disabled={agentChatMutation.isPending || !input.trim()}
+              className="shadow-sm"
+            >
               <Send className="h-4 w-4" />
             </Button>
           </form>

@@ -2,10 +2,25 @@
 
 import React, { Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { Mail, Calendar as CalendarIcon, CheckCircle2, AlertTriangle, ArrowRight, ShieldCheck, RefreshCw } from "lucide-react";
+import {
+  Mail,
+  Calendar as CalendarIcon,
+  CheckCircle2,
+  AlertTriangle,
+  ArrowRight,
+  ShieldCheck,
+  RefreshCw,
+} from "lucide-react";
 import { trpc } from "~/trpc/client";
 import { useTenant } from "~/hooks/use-tenant";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "~/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { toast } from "sonner";
 
@@ -14,21 +29,21 @@ function SettingsPageContent() {
   const { tenantId } = useTenant();
 
   // tRPC queries/mutations
-  const gmailStatus = trpc.gmail.getConnectionStatus.useQuery({ tenantId }, {
-    refetchOnWindowFocus: true,
-  });
-  const calendarStatus = trpc.calendar.getConnectionStatus.useQuery({ tenantId }, {
-    refetchOnWindowFocus: true,
-  });
+  const gmailStatus = trpc.gmail.getConnectionStatus.useQuery(
+    { tenantId },
+    {
+      refetchOnWindowFocus: true,
+    },
+  );
+  const calendarStatus = trpc.calendar.getConnectionStatus.useQuery(
+    { tenantId },
+    {
+      refetchOnWindowFocus: true,
+    },
+  );
 
-  const getGmailAuthUrl = trpc.gmail.getAuthUrl.useQuery(
-    { tenantId },
-    { enabled: false }
-  );
-  const getCalendarAuthUrl = trpc.calendar.getAuthUrl.useQuery(
-    { tenantId },
-    { enabled: false }
-  );
+  const getGmailAuthUrl = trpc.gmail.getAuthUrl.useQuery({ tenantId }, { enabled: false });
+  const getCalendarAuthUrl = trpc.calendar.getAuthUrl.useQuery({ tenantId }, { enabled: false });
 
   // Check query parameters for redirect outcomes
   useEffect(() => {
@@ -36,7 +51,9 @@ function SettingsPageContent() {
     const error = searchParams.get("error");
 
     if (connected) {
-      toast.success(`Successfully connected ${connected === "gmail" ? "Gmail" : "Google Calendar"}!`);
+      toast.success(
+        `Successfully connected ${connected === "gmail" ? "Gmail" : "Google Calendar"}!`,
+      );
       // Clean up URL query parameters
       window.history.replaceState({}, document.title, window.location.pathname);
       gmailStatus.refetch();
@@ -46,11 +63,11 @@ function SettingsPageContent() {
       toast.error("Failed to connect account. Please check your credentials and try again.");
       window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, [searchParams]);
+  }, [calendarStatus, gmailStatus, searchParams]);
 
   const handleConnectGmail = async () => {
     try {
-      const { url } = await getGmailAuthUrl.refetch().then(res => res.data!);
+      const { url } = await getGmailAuthUrl.refetch().then((res) => res.data!);
       window.location.href = url;
     } catch {
       toast.error("Failed to retrieve authorization URL for Gmail.");
@@ -59,7 +76,7 @@ function SettingsPageContent() {
 
   const handleConnectCalendar = async () => {
     try {
-      const { url } = await getCalendarAuthUrl.refetch().then(res => res.data!);
+      const { url } = await getCalendarAuthUrl.refetch().then((res) => res.data!);
       window.location.href = url;
     } catch {
       toast.error("Failed to retrieve authorization URL for Google Calendar.");
@@ -72,7 +89,8 @@ function SettingsPageContent() {
       <div>
         <h1 className="text-3xl font-extrabold tracking-tight">Integrations & Settings</h1>
         <p className="text-muted-foreground mt-1.5">
-          Connect your Google accounts via Corsair to enable unified mail, calendar scheduling, and AI orchestration.
+          Connect your Google accounts via Corsair to enable unified mail, calendar scheduling, and
+          AI orchestration.
         </p>
       </div>
 
@@ -107,20 +125,30 @@ function SettingsPageContent() {
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
-                Give Ultrahuman access to retrieve messages, compile threads, draft replies, and deliver messages on your behalf.
+                Give Ultrahuman access to retrieve messages, compile threads, draft replies, and
+                deliver messages on your behalf.
               </p>
             )}
           </CardContent>
           <CardFooter className="border-t border-border/60 bg-muted/5 px-6 py-4 flex justify-between">
-            <Button variant="outline" size="sm" onClick={() => gmailStatus.refetch()} disabled={gmailStatus.isFetching}>
-              <RefreshCw className={`h-3 w-3 mr-1.5 ${gmailStatus.isFetching ? "animate-spin" : ""}`} /> Sync Status
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => gmailStatus.refetch()}
+              disabled={gmailStatus.isFetching}
+            >
+              <RefreshCw
+                className={`h-3 w-3 mr-1.5 ${gmailStatus.isFetching ? "animate-spin" : ""}`}
+              />{" "}
+              Sync Status
             </Button>
             <Button
               size="sm"
               onClick={handleConnectGmail}
               variant={gmailStatus.data?.connected ? "secondary" : "default"}
             >
-              {gmailStatus.data?.connected ? "Reconnect Account" : "Connect Account"} <ArrowRight className="h-4.5 w-4.5 ml-1.5" />
+              {gmailStatus.data?.connected ? "Reconnect Account" : "Connect Account"}{" "}
+              <ArrowRight className="h-4.5 w-4.5 ml-1.5" />
             </Button>
           </CardFooter>
         </Card>
@@ -132,7 +160,9 @@ function SettingsPageContent() {
               <CardTitle className="text-xl flex items-center gap-2">
                 <CalendarIcon className="h-5 w-5 text-blue-500" /> Google Calendar
               </CardTitle>
-              <CardDescription>Manage schedule, check availability, and send invites</CardDescription>
+              <CardDescription>
+                Manage schedule, check availability, and send invites
+              </CardDescription>
             </div>
             {calendarStatus.data?.connected ? (
               <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-1 rounded-full">
@@ -155,20 +185,30 @@ function SettingsPageContent() {
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
-                Integrate Google Calendar to enable meeting scheduling, real-time availability lookups, and direct Google Meet creation.
+                Integrate Google Calendar to enable meeting scheduling, real-time availability
+                lookups, and direct Google Meet creation.
               </p>
             )}
           </CardContent>
           <CardFooter className="border-t border-border/60 bg-muted/5 px-6 py-4 flex justify-between">
-            <Button variant="outline" size="sm" onClick={() => calendarStatus.refetch()} disabled={calendarStatus.isFetching}>
-              <RefreshCw className={`h-3 w-3 mr-1.5 ${calendarStatus.isFetching ? "animate-spin" : ""}`} /> Sync Status
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => calendarStatus.refetch()}
+              disabled={calendarStatus.isFetching}
+            >
+              <RefreshCw
+                className={`h-3 w-3 mr-1.5 ${calendarStatus.isFetching ? "animate-spin" : ""}`}
+              />{" "}
+              Sync Status
             </Button>
             <Button
               size="sm"
               onClick={handleConnectCalendar}
               variant={calendarStatus.data?.connected ? "secondary" : "default"}
             >
-              {calendarStatus.data?.connected ? "Reconnect Account" : "Connect Account"} <ArrowRight className="h-4.5 w-4.5 ml-1.5" />
+              {calendarStatus.data?.connected ? "Reconnect Account" : "Connect Account"}{" "}
+              <ArrowRight className="h-4.5 w-4.5 ml-1.5" />
             </Button>
           </CardFooter>
         </Card>

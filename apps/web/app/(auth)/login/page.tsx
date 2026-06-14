@@ -47,7 +47,9 @@ function LoginForm() {
       if (isUnverified) {
         setResendEmail(email);
         setShowResend(true);
-        toast.error("Your email is not verified yet. Please check your inbox or resend the verification link.");
+        toast.error(
+          "Your email is not verified yet. Please check your inbox or resend the verification link.",
+        );
       } else {
         toast.error(error.message || "Failed to sign in");
       }
@@ -96,9 +98,7 @@ function LoginForm() {
         </Link>
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Welcome back</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Sign in to your account to continue
-          </p>
+          <p className="text-sm text-muted-foreground mt-1">Sign in to your account to continue</p>
         </div>
       </div>
 
@@ -151,10 +151,7 @@ function LoginForm() {
         {/* Email/Password Form */}
         <form onSubmit={handleEmailLogin} className="space-y-4">
           <div className="space-y-2">
-            <label
-              htmlFor="email"
-              className="text-sm font-medium text-foreground"
-            >
+            <label htmlFor="email" className="text-sm font-medium text-foreground">
               Email
             </label>
             <div className="relative">
@@ -172,10 +169,7 @@ function LoginForm() {
           </div>
 
           <div className="space-y-2">
-            <label
-              htmlFor="password"
-              className="text-sm font-medium text-foreground"
-            >
+            <label htmlFor="password" className="text-sm font-medium text-foreground">
               Password
             </label>
             <div className="relative">
@@ -197,7 +191,8 @@ function LoginForm() {
             <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-foreground space-y-3">
               <p className="font-medium text-destructive">Email Verification Required</p>
               <p className="text-xs text-muted-foreground leading-relaxed text-left">
-                You must verify your email address before logging in. If you didn't receive the verification email, we can send you another link.
+                You must verify your email address before logging in. If you did not receive the
+                verification email, we can send you another link.
               </p>
               <Button
                 type="button"
@@ -219,11 +214,7 @@ function LoginForm() {
             </div>
           )}
 
-          <Button
-            type="submit"
-            className="w-full h-11 text-sm font-medium"
-            disabled={isLoading}
-          >
+          <Button type="submit" className="w-full h-11 text-sm font-medium" disabled={isLoading}>
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (

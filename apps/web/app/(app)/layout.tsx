@@ -72,8 +72,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useKeyboardShortcuts({
     "?": () => setShowShortcuts(true),
-    "meta+k": () => setShowCommandPalette(prev => !prev),
-    "escape": () => {
+    "meta+k": () => setShowCommandPalette((prev) => !prev),
+    escape: () => {
       setShowShortcuts(false);
       setShowCommandPalette(false);
     },
@@ -104,7 +104,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         router.push("/settings");
         setGPressed(false);
       }
-    }
+    },
   });
 
   const navigation = [
@@ -141,7 +141,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen bg-background overflow-hidden font-sans">
       {/* Sidebar */}
-      <aside className={`relative ${isCollapsed ? "w-16" : "w-64"} border-r border-border bg-card flex flex-col justify-between h-full z-20 transition-all duration-300 ease-in-out`}>
+      <aside
+        className={`relative ${isCollapsed ? "w-16" : "w-64"} border-r border-border bg-card flex flex-col justify-between h-full z-20 transition-all duration-300 ease-in-out`}
+      >
         {/* Toggle Button */}
         <button
           onClick={toggleSidebar}
@@ -156,7 +158,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         <div>
           {/* Logo / Header */}
-          <div className={`h-16 px-4 flex items-center ${isCollapsed ? "justify-center" : "gap-2 px-6"} border-b border-border bg-muted/10 transition-all duration-300`}>
+          <div
+            className={`h-16 px-4 flex items-center ${isCollapsed ? "justify-center" : "gap-2 px-6"} border-b border-border bg-muted/10 transition-all duration-300`}
+          >
             <Sparkles className="h-5 w-5 text-primary flex-shrink-0" />
             {!isCollapsed && (
               <span className="font-normal text-base tracking-tight text-foreground whitespace-nowrap overflow-hidden">
@@ -164,8 +168,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </span>
             )}
           </div>
- 
-           {/* Navigation Links */}
+
+          {/* Navigation Links */}
           <nav className="p-3 space-y-1">
             {navigation.map((item) => {
               const isActive = pathname.startsWith(item.href);
@@ -190,13 +194,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             })}
           </nav>
         </div>
- 
+
         {/* Sidebar Footer */}
         <div className="p-3 border-t border-border bg-muted/10 space-y-4 transition-all duration-300">
           {/* User Info */}
-          <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3 px-3"} transition-all duration-300`}>
-            {session.user.image && session.user.image !== "null" && session.user.image !== "undefined" && !imageError ? (
+          <div
+            className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3 px-3"} transition-all duration-300`}
+          >
+            {session.user.image &&
+            session.user.image !== "null" &&
+            session.user.image !== "undefined" &&
+            !imageError ? (
               <div className="h-8 w-8 rounded-full overflow-hidden border border-border flex-shrink-0 flex items-center justify-center bg-muted">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={session.user.image}
                   alt={session.user.name ?? "User"}
@@ -212,17 +222,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             )}
             {!isCollapsed && (
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">
-                  {session.user.name}
-                </p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {session.user.email}
-                </p>
+                <p className="text-sm font-medium text-foreground truncate">{session.user.name}</p>
+                <p className="text-xs text-muted-foreground truncate">{session.user.email}</p>
               </div>
             )}
           </div>
 
-          <div className={`flex ${isCollapsed ? "flex-col items-center" : "items-center justify-between px-3"} gap-2 transition-all duration-300`}>
+          <div
+            className={`flex ${isCollapsed ? "flex-col items-center" : "items-center justify-between px-3"} gap-2 transition-all duration-300`}
+          >
             {/* Keyboard Shortcuts Trigger */}
             <Button
               variant="outline"
@@ -260,9 +268,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden bg-muted/20">
-        {children}
-      </main>
+      <main className="flex-1 flex flex-col h-full overflow-hidden bg-muted/20">{children}</main>
 
       {/* Keyboard Shortcuts Dialog */}
       <Dialog open={showShortcuts} onOpenChange={setShowShortcuts}>
@@ -282,22 +288,35 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <div className="font-semibold border-b border-border pb-1">Keys</div>
 
               <div>Move Selection Down</div>
-              <div><kbd className="px-1.5 py-0.5 border rounded bg-muted">j</kbd></div>
+              <div>
+                <kbd className="px-1.5 py-0.5 border rounded bg-muted">j</kbd>
+              </div>
 
               <div>Move Selection Up</div>
-              <div><kbd className="px-1.5 py-0.5 border rounded bg-muted">k</kbd></div>
+              <div>
+                <kbd className="px-1.5 py-0.5 border rounded bg-muted">k</kbd>
+              </div>
 
               <div>Archive Thread</div>
-              <div><kbd className="px-1.5 py-0.5 border rounded bg-muted">e</kbd></div>
+              <div>
+                <kbd className="px-1.5 py-0.5 border rounded bg-muted">e</kbd>
+              </div>
 
               <div>Star Thread</div>
-              <div><kbd className="px-1.5 py-0.5 border rounded bg-muted">s</kbd></div>
+              <div>
+                <kbd className="px-1.5 py-0.5 border rounded bg-muted">s</kbd>
+              </div>
 
               <div>Compose New Email</div>
-              <div><kbd className="px-1.5 py-0.5 border rounded bg-muted">c</kbd></div>
+              <div>
+                <kbd className="px-1.5 py-0.5 border rounded bg-muted">c</kbd>
+              </div>
 
               <div>Open Command Palette</div>
-              <div><kbd className="px-1.5 py-0.5 border rounded bg-muted">⌘ K</kbd> or <kbd className="px-1.5 py-0.5 border rounded bg-muted">Ctrl K</kbd></div>
+              <div>
+                <kbd className="px-1.5 py-0.5 border rounded bg-muted">⌘ K</kbd> or{" "}
+                <kbd className="px-1.5 py-0.5 border rounded bg-muted">Ctrl K</kbd>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-sm pt-2">
@@ -305,13 +324,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <div className="font-semibold border-b border-border pb-1">Keys</div>
 
               <div>Show Help Dialog</div>
-              <div><kbd className="px-1.5 py-0.5 border rounded bg-muted">?</kbd></div>
+              <div>
+                <kbd className="px-1.5 py-0.5 border rounded bg-muted">?</kbd>
+              </div>
 
               <div>Go to Mail</div>
-              <div><kbd className="px-1.5 py-0.5 border rounded bg-muted">g</kbd> then <kbd className="px-1.5 py-0.5 border rounded bg-muted">i</kbd></div>
+              <div>
+                <kbd className="px-1.5 py-0.5 border rounded bg-muted">g</kbd> then{" "}
+                <kbd className="px-1.5 py-0.5 border rounded bg-muted">i</kbd>
+              </div>
 
               <div>Go to Calendar</div>
-              <div><kbd className="px-1.5 py-0.5 border rounded bg-muted">g</kbd> then <kbd className="px-1.5 py-0.5 border rounded bg-muted">a</kbd></div>
+              <div>
+                <kbd className="px-1.5 py-0.5 border rounded bg-muted">g</kbd> then{" "}
+                <kbd className="px-1.5 py-0.5 border rounded bg-muted">a</kbd>
+              </div>
             </div>
           </div>
         </DialogContent>
