@@ -4,6 +4,8 @@ import { protectedProcedure, router } from "../../trpc";
 import { generatePath } from "../../utils/path-generator";
 import OpenAI from "openai";
 import { buildCorsairToolDefs } from "@corsair-dev/mcp";
+import type {} from "express-serve-static-core";
+import type {} from "qs";
 
 const TAGS = ["Agent"];
 const getPath = generatePath("/agent");
