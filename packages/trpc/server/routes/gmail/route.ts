@@ -2,6 +2,7 @@ import { z } from "../../schema";
 import { corsair, generateOAuthUrl } from "@repo/services/corsair";
 import { publicProcedure, router } from "../../trpc";
 import { generatePath } from "../../utils/path-generator";
+import type {} from "express-serve-static-core";
 
 const TAGS = ["Gmail"];
 const getPath = generatePath("/gmail");
@@ -22,6 +23,7 @@ const emailMessageSchema = z.object({
   subject: z.string(),
   snippet: z.string(),
   body: z.string(),
+  isHtml: z.boolean().optional(),
   isRead: z.boolean(),
   isStarred: z.boolean(),
   receivedAt: z.string(),
@@ -62,22 +64,43 @@ function parseEmailAddresses(headerVal?: string): { email: string; name?: string
   return addresses.map((addr) => parseEmailAddress(addr));
 }
 
-function getBody(part?: any): string {
-  if (!part) return "";
-  if (part.body?.data) {
+function extractBody(part?: any): { html?: string; text?: string } {
+  if (!part) return {};
+
+  const bodyData = part.body?.data;
+  let decoded = "";
+  if (bodyData) {
     try {
-      return Buffer.from(part.body.data, "base64url").toString("utf-8");
-    } catch {
-      return "";
-    }
+      decoded = Buffer.from(bodyData, "base64url").toString("utf-8");
+    } catch {}
   }
+
+  const mimeType = part.mimeType?.toLowerCase();
+  
+  if (mimeType === "text/html" && decoded) {
+    return { html: decoded };
+  }
+  if (mimeType === "text/plain" && decoded) {
+    return { text: decoded };
+  }
+
+  let html: string | undefined;
+  let text: string | undefined;
+
   if (part.parts) {
     for (const subPart of part.parts) {
-      const body = getBody(subPart);
-      if (body) return body;
+      const res = extractBody(subPart);
+      if (res.html) html = res.html;
+      if (res.text) text = res.text;
     }
   }
-  return "";
+
+  return { html, text };
+}
+
+function getBody(part?: any): string {
+  const { html, text } = extractBody(part);
+  return html || text || "";
 }
 
 interface ParsedMessage {
@@ -89,10 +112,23 @@ interface ParsedMessage {
   subject: string;
   snippet: string;
   body: string;
+  isHtml?: boolean;
   isRead: boolean;
   isStarred: boolean;
   receivedAt: string;
   labels: string[];
+}
+
+function decodeHtmlEntities(text: string): string {
+  if (!text) return "";
+  return text
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#x27;/g, "'")
+    .replace(/&apos;/g, "'");
 }
 
 function parseMessage(msg: any): ParsedMessage {
@@ -100,15 +136,20 @@ function parseMessage(msg: any): ParsedMessage {
   const getHeader = (name: string) =>
     headers.find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value;
 
+  const { html, text } = extractBody(msg.payload);
+  const body = html || text || msg.snippet || "";
+  const isHtml = !!html;
+
   return {
     id: String(msg.id ?? ""),
     threadId: String(msg.threadId ?? ""),
     from: parseEmailAddress(getHeader("from")),
     to: parseEmailAddresses(getHeader("to")),
     cc: getHeader("cc") ? parseEmailAddresses(getHeader("cc")) : undefined,
-    subject: getHeader("subject") ?? "(no subject)",
-    snippet: String(msg.snippet ?? ""),
-    body: getBody(msg.payload) || msg.snippet || "",
+    subject: decodeHtmlEntities(getHeader("subject") ?? "(no subject)"),
+    snippet: decodeHtmlEntities(String(msg.snippet ?? "")),
+    body,
+    isHtml,
     isRead: !(msg.labelIds ?? []).includes("UNREAD"),
     isStarred: (msg.labelIds ?? []).includes("STARRED"),
     receivedAt: msg.internalDate
@@ -116,6 +157,46 @@ function parseMessage(msg: any): ParsedMessage {
       : new Date().toISOString(),
     labels: (msg.labelIds as string[]) ?? [],
   };
+}
+
+async function fetchAndParseThreads(client: any, rawThreads: any[]): Promise<any[]> {
+  return Promise.all(
+    rawThreads.map(async (t) => {
+      try {
+        const threadDetails = await client.gmail.api.threads.get({
+          id: t.id,
+        });
+        const parsedMessages: ParsedMessage[] = (threadDetails?.messages ?? []).map(parseMessage);
+        const firstMessage = parsedMessages[0];
+        const lastMessage = parsedMessages[parsedMessages.length - 1];
+
+        return {
+          id: String(t.id),
+          subject: String(firstMessage?.subject ?? "(no subject)"),
+          snippet: String(threadDetails?.snippet ?? t.snippet ?? firstMessage?.snippet ?? ""),
+          from: firstMessage?.from ?? { email: "" },
+          messageCount: parsedMessages.length,
+          isRead: parsedMessages.every((m) => m.isRead),
+          isStarred: parsedMessages.some((m) => m.isStarred),
+          lastMessageAt: lastMessage?.receivedAt ?? new Date().toISOString(),
+          labels: Array.from(new Set(parsedMessages.flatMap((m) => m.labels))),
+        };
+      } catch (err) {
+        console.error(`Failed to fetch thread details for ${t.id}:`, err);
+        return {
+          id: String(t.id),
+          subject: "(no subject)",
+          snippet: String(t.snippet ?? ""),
+          from: { email: "" },
+          messageCount: 1,
+          isRead: false,
+          isStarred: false,
+          lastMessageAt: new Date().toISOString(),
+          labels: [],
+        };
+      }
+    })
+  );
 }
 
 // ─── Router ──────────────────────────────────────────────────────────────────
@@ -178,17 +259,7 @@ export const gmailRouter = router({
         q: input.q,
       });
 
-      const threads = (result?.threads ?? []).map((t: Record<string, unknown>) => ({
-        id: String(t.id ?? ""),
-        subject: String(t.subject ?? "(no subject)"),
-        snippet: String(t.snippet ?? ""),
-        from: (t.from as { email: string; name?: string }) ?? { email: "" },
-        messageCount: Number(t.messageCount ?? 1),
-        isRead: Boolean(t.isRead ?? false),
-        isStarred: Boolean(t.isStarred ?? false),
-        lastMessageAt: String(t.lastMessageAt ?? new Date().toISOString()),
-        labels: (t.labels as string[]) ?? [],
-      }));
+      const threads = await fetchAndParseThreads(client, result?.threads ?? []);
 
       return {
         threads,
@@ -243,17 +314,7 @@ export const gmailRouter = router({
         maxResults: input.maxResults,
       });
 
-      const threads = (result?.threads ?? []).map((t: Record<string, unknown>) => ({
-        id: String(t.id ?? ""),
-        subject: String(t.subject ?? "(no subject)"),
-        snippet: String(t.snippet ?? ""),
-        from: (t.from as { email: string; name?: string }) ?? { email: "" },
-        messageCount: Number(t.messageCount ?? 1),
-        isRead: Boolean(t.isRead ?? false),
-        isStarred: Boolean(t.isStarred ?? false),
-        lastMessageAt: String(t.lastMessageAt ?? new Date().toISOString()),
-        labels: (t.labels as string[]) ?? [],
-      }));
+      const threads = await fetchAndParseThreads(client, result?.threads ?? []);
 
       return { threads };
     }),

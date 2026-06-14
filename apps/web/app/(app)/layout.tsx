@@ -15,6 +15,8 @@ import {
   Sun,
   LogOut,
   Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "~/components/ui/button";
@@ -43,6 +45,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [gPressed, setGPressed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("sidebar-collapsed");
+    if (saved !== null) {
+      setIsCollapsed(saved === "true");
+    }
+  }, []);
+
+  const toggleSidebar = () => {
+    const newValue = !isCollapsed;
+    setIsCollapsed(newValue);
+    localStorage.setItem("sidebar-collapsed", String(newValue));
+  };
 
   const { data: session, isPending } = authClient.useSession();
 
@@ -124,18 +141,32 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen bg-background overflow-hidden font-sans">
       {/* Sidebar */}
-      <aside className="w-64 border-r border-border bg-card flex flex-col justify-between h-full z-20">
+      <aside className={`relative ${isCollapsed ? "w-16" : "w-64"} border-r border-border bg-card flex flex-col justify-between h-full z-20 transition-all duration-300 ease-in-out`}>
+        {/* Toggle Button */}
+        <button
+          onClick={toggleSidebar}
+          className="absolute -right-3 top-20 z-30 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-card shadow-sm hover:bg-accent hover:text-accent-foreground cursor-pointer transition-all"
+        >
+          {isCollapsed ? (
+            <ChevronRight className="h-3.5 w-3.5" />
+          ) : (
+            <ChevronLeft className="h-3.5 w-3.5" />
+          )}
+        </button>
+
         <div>
           {/* Logo / Header */}
-          <div className="h-16 px-6 flex items-center gap-2 border-b border-border bg-muted/20">
-            <Sparkles className="h-6 w-6 text-primary animate-pulse" />
-            <span className="font-bold text-xl tracking-tight bg-gradient-to-r from-primary to-muted-foreground bg-clip-text text-transparent">
-              Ultrahuman
-            </span>
+          <div className={`h-16 px-4 flex items-center ${isCollapsed ? "justify-center" : "gap-2 px-6"} border-b border-border bg-muted/20 transition-all duration-300`}>
+            <Sparkles className="h-6 w-6 text-primary flex-shrink-0 animate-pulse" />
+            {!isCollapsed && (
+              <span className="font-bold text-xl tracking-tight bg-gradient-to-r from-primary to-muted-foreground bg-clip-text text-transparent whitespace-nowrap overflow-hidden">
+                Ultrahuman
+              </span>
+            )}
           </div>
 
           {/* Navigation Links */}
-          <nav className="p-4 space-y-1">
+          <nav className="p-3 space-y-1">
             {navigation.map((item) => {
               const isActive = pathname.startsWith(item.href);
               const Icon = item.icon;
@@ -143,14 +174,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                  title={isCollapsed ? item.name : undefined}
+                  className={`flex items-center ${
+                    isCollapsed ? "justify-center p-2.5" : "gap-3 px-3 py-2.5"
+                  } rounded-lg text-sm font-medium transition-all ${
                     isActive
                       ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   }`}
                 >
-                  <Icon className="h-5 w-5" />
-                  {item.name}
+                  <Icon className="h-5 w-5 flex-shrink-0" />
+                  {!isCollapsed && <span className="whitespace-nowrap">{item.name}</span>}
                 </Link>
               );
             })}
@@ -158,36 +192,40 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Sidebar Footer */}
-        <div className="p-4 border-t border-border bg-muted/10 space-y-4">
+        <div className="p-3 border-t border-border bg-muted/10 space-y-4 transition-all duration-300">
           {/* User Info */}
-          <div className="flex items-center gap-3 px-1">
-            {session.user.image ? (
+          <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3 px-3"} transition-all duration-300`}>
+            {session.user.image && !imageError ? (
               <img
                 src={session.user.image}
                 alt={session.user.name}
-                className="h-8 w-8 rounded-full object-cover border border-border"
+                referrerPolicy="no-referrer"
+                onError={() => setImageError(true)}
+                className="h-8 w-8 rounded-full object-cover border border-border flex-shrink-0"
               />
             ) : (
-              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-xs border border-primary/20">
+              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-xs border border-primary/20 flex-shrink-0">
                 {session.user.name?.charAt(0)?.toUpperCase() ?? "U"}
               </div>
             )}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">
-                {session.user.name}
-              </p>
-              <p className="text-xs text-muted-foreground truncate">
-                {session.user.email}
-              </p>
-            </div>
+            {!isCollapsed && (
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground truncate">
+                  {session.user.name}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {session.user.email}
+                </p>
+              </div>
+            )}
           </div>
 
-          <div className="flex items-center justify-between gap-2">
+          <div className={`flex ${isCollapsed ? "flex-col items-center" : "items-center justify-between px-3"} gap-2 transition-all duration-300`}>
             {/* Keyboard Shortcuts Trigger */}
             <Button
               variant="outline"
               size="icon"
-              className="h-9 w-9"
+              className="h-9 w-9 flex-shrink-0"
               onClick={() => setShowShortcuts(true)}
               title="Keyboard Shortcuts (?)"
             >
@@ -198,7 +236,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Button
               variant="outline"
               size="icon"
-              className="h-9 w-9"
+              className="h-9 w-9 flex-shrink-0"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             >
               <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
@@ -209,7 +247,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Button
               variant="outline"
               size="icon"
-              className="h-9 w-9"
+              className="h-9 w-9 flex-shrink-0"
               onClick={handleSignOut}
               title="Sign out"
             >

@@ -545,7 +545,9 @@ function InboxPageContent() {
                     </div>
 
                     <div 
-                      className="text-sm text-foreground/90 leading-relaxed break-words pt-1 space-y-2 whitespace-pre-line"
+                      className={message.isHtml 
+                        ? "text-sm text-foreground/90 leading-relaxed break-words pt-1" 
+                        : "text-sm text-foreground/90 leading-relaxed break-words pt-1 space-y-2 whitespace-pre-line"}
                       dangerouslySetInnerHTML={{ __html: message.body || message.snippet }}
                     />
                   </div>
