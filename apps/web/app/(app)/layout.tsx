@@ -1,23 +1,24 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { 
-  Mail, 
-  Calendar as CalendarIcon, 
-  Bot, 
-  Settings as SettingsIcon, 
-  Keyboard, 
+import { usePathname, useRouter } from "next/navigation";
+import {
+  Mail,
+  Calendar as CalendarIcon,
+  Bot,
+  Settings as SettingsIcon,
+  Keyboard,
   Sparkles,
   Command as CommandIcon,
   Moon,
   Sun,
-  X
+  LogOut,
+  Loader2,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "~/components/ui/button";
-import { useTenant } from "~/hooks/use-tenant";
+import { authClient } from "~/lib/auth-client";
 import {
   Dialog,
   DialogContent,
@@ -25,7 +26,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
-import { useRouter } from "next/navigation";
 import { useKeyboardShortcuts } from "~/hooks/use-keyboard-shortcuts";
 import {
   CommandDialog,
@@ -38,12 +38,20 @@ import {
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { tenantId, changeTenant } = useTenant();
-  const { theme, setTheme } = useTheme();
   const router = useRouter();
+  const { theme, setTheme } = useTheme();
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [gPressed, setGPressed] = useState(false);
+
+  const { data: session, isPending } = authClient.useSession();
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isPending && !session) {
+      router.replace("/login");
+    }
+  }, [session, isPending, router]);
 
   useKeyboardShortcuts({
     "?": () => setShowShortcuts(true),
@@ -89,6 +97,30 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { name: "Settings", href: "/settings", icon: SettingsIcon },
   ];
 
+  const handleSignOut = async () => {
+    await authClient.signOut({
+      fetchOptions: {
+        onSuccess: () => {
+          router.push("/login");
+        },
+      },
+    });
+  };
+
+  // Show loading while checking auth
+  if (isPending) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Don't render the app if not authenticated (will redirect)
+  if (!session) {
+    return null;
+  }
+
   return (
     <div className="flex h-screen bg-background overflow-hidden font-sans">
       {/* Sidebar */}
@@ -127,18 +159,27 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* Sidebar Footer */}
         <div className="p-4 border-t border-border bg-muted/10 space-y-4">
-          {/* Tenant Switcher */}
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-muted-foreground tracking-wider uppercase">
-              Current Tenant
-            </label>
-            <input
-              type="text"
-              value={tenantId}
-              onChange={(e) => changeTenant(e.target.value)}
-              placeholder="Enter tenant ID..."
-              className="w-full text-xs px-2.5 py-1.5 rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            />
+          {/* User Info */}
+          <div className="flex items-center gap-3 px-1">
+            {session.user.image ? (
+              <img
+                src={session.user.image}
+                alt={session.user.name}
+                className="h-8 w-8 rounded-full object-cover border border-border"
+              />
+            ) : (
+              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-xs border border-primary/20">
+                {session.user.name?.charAt(0)?.toUpperCase() ?? "U"}
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground truncate">
+                {session.user.name}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                {session.user.email}
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center justify-between gap-2">
@@ -162,6 +203,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             >
               <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
               <Moon className="h-4 w-4 absolute rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            </Button>
+
+            {/* Sign Out */}
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-9 w-9"
+              onClick={handleSignOut}
+              title="Sign out"
+            >
+              <LogOut className="h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -292,6 +344,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             >
               <Moon className="h-4 w-4" />
               <span>Switch to Dark Mode</span>
+            </CommandItem>
+          </CommandGroup>
+          <CommandGroup heading="Account">
+            <CommandItem
+              onSelect={() => {
+                handleSignOut();
+                setShowCommandPalette(false);
+              }}
+              className="flex items-center gap-2"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Sign out</span>
             </CommandItem>
           </CommandGroup>
         </CommandList>

@@ -1,22 +1,19 @@
-import { useState, useEffect } from "react";
+import { authClient } from "~/lib/auth-client";
 
+/**
+ * Returns the current tenant ID, derived from the authenticated user's session.
+ * Falls back to "demo-user-1" if no session is available (e.g., during SSR or loading).
+ */
 export function useTenant() {
-  const [tenantId, setTenantId] = useState<string>("demo-user-1");
+  const { data: session } = authClient.useSession();
 
-  useEffect(() => {
-    const saved = localStorage.getItem("ultrahuman_tenant_id");
-    if (saved) {
-      setTenantId(saved);
-    }
-  }, []);
-
-  const changeTenant = (id: string) => {
-    localStorage.setItem("ultrahuman_tenant_id", id);
-    setTenantId(id);
-  };
+  const tenantId = session?.user?.id ?? "demo-user-1";
 
   return {
     tenantId,
-    changeTenant,
+    // changeTenant is no longer needed — tenant is derived from auth session
+    changeTenant: (_id: string) => {
+      console.warn("changeTenant is deprecated. Tenant is now derived from the authenticated session.");
+    },
   };
 }

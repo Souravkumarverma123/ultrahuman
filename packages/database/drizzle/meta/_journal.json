@@ -15,6 +15,13 @@
       "when": 1781260267220,
       "tag": "0001_worthless_rumiko_fujikawa",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1781418216378,
+      "tag": "0002_colorful_kid_colt",
+      "breakpoints": true
     }
   ]
 }

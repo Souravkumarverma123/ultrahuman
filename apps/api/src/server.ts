@@ -2,6 +2,7 @@ import express from "express";
 import { logger } from "@repo/logger";
 import cors from "cors";
 import { processWebhook } from "corsair";
+import { toNodeHandler } from "better-auth/node";
 
 import * as trpcExpress from "@trpc/server/adapters/express";
 import { generateOpenApiDocument, createOpenApiExpressMiddleware } from "trpc-to-openapi";
@@ -9,6 +10,7 @@ import { apiReference } from "@scalar/express-api-reference";
 
 import { serverRouter, createContext } from "@repo/trpc/server";
 import { corsair, processOAuthCallback } from "@repo/services/corsair";
+import { auth } from "@repo/auth";
 
 import { env } from "./env";
 
@@ -25,6 +27,10 @@ app.use(
     credentials: true,
   }),
 );
+
+// ─── Better Auth: Mount BEFORE express.json() ──────────────────────────────
+// Better Auth needs raw body access — express.json() must come after
+app.all("/api/auth/{*splat}", toNodeHandler(auth));
 
 app.use(express.json());
 
