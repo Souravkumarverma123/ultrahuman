@@ -29,6 +29,7 @@ import {
   DialogTitle,
 } from "~/components/ui/dialog";
 import { useKeyboardShortcuts } from "~/hooks/use-keyboard-shortcuts";
+import { useServerEvents } from "~/hooks/use-server-events";
 import {
   CommandDialog,
   CommandInput,
@@ -62,6 +63,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   const { data: session, isPending } = authClient.useSession();
+  useServerEvents(Boolean(session));
 
   // Redirect to login if not authenticated
   useEffect(() => {

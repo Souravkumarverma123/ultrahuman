@@ -245,13 +245,7 @@ function InboxPageContent() {
         },
       },
     );
-  }, [
-    markThreadAsRead,
-    refetchThreads,
-    selectedThreadAutoReadId,
-    selectedThreadIsRead,
-    tenantId,
-  ]);
+  }, [markThreadAsRead, refetchThreads, selectedThreadAutoReadId, selectedThreadIsRead, tenantId]);
 
   useEffect(() => {
     if (!selectedThreadId) {
