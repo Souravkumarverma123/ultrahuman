@@ -46,6 +46,8 @@ const featureCards: Array<{
   description: string;
   pillText: string;
   pillClass: string;
+  tag: string;
+  watermark: string;
 }> = [
   {
     icon: Search,
@@ -54,6 +56,8 @@ const featureCards: Array<{
       "Promote advanced query syntax, filters, and thread context into one command-forward search surface.",
     pillText: "Grep",
     pillClass: "timeline-pill-grep",
+    tag: "GMAIL GREP",
+    watermark: "速",
   },
   {
     icon: CalendarClock,
@@ -62,6 +66,8 @@ const featureCards: Array<{
       "Create events, add Meet links, include attendees, and pair the invite with a companion email.",
     pillText: "Thinking",
     pillClass: "timeline-pill-thinking",
+    tag: "CALENDAR INTENT",
+    watermark: "生",
   },
   {
     icon: Bot,
@@ -70,6 +76,8 @@ const featureCards: Array<{
       "Ask for email and calendar work in natural language while Corsair-backed actions stay visible.",
     pillText: "Edit",
     pillClass: "timeline-pill-edit",
+    tag: "AGENT ORCHESTRATOR",
+    watermark: "型",
   },
   {
     icon: BellRing,
@@ -78,6 +86,8 @@ const featureCards: Array<{
       "Corsair webhooks keep incoming mail and schedule changes available without slow polling loops.",
     pillText: "Read",
     pillClass: "timeline-pill-read",
+    tag: "WEBHOOK EVENTS",
+    watermark: "鎖",
   },
   {
     icon: Keyboard,
@@ -86,6 +96,8 @@ const featureCards: Array<{
       "Move, compose, archive, and jump between mail, calendar, and chat with low-friction commands.",
     pillText: "Done",
     pillClass: "timeline-pill-done",
+    tag: "KEYBOARD SHORTCUTS",
+    watermark: "出",
   },
   {
     icon: Database,
@@ -94,6 +106,8 @@ const featureCards: Array<{
       "Postgres becomes the base for cached messages, workflow state, and future vector search.",
     pillText: "Grep",
     pillClass: "timeline-pill-grep",
+    tag: "LOCAL DATABASE",
+    watermark: "析",
   },
 ];
 
@@ -600,21 +614,37 @@ export function LandingContent() {
               Building blocks for the way you actually work.
             </h2>
           </div>
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[1px] bg-border border border-border rounded-xl overflow-hidden shadow-none">
             {featureCards.map((feature) => (
-              <article className="editorial-card flex flex-col justify-between" key={feature.title}>
-                <div>
-                  <div className="w-10 h-10 rounded-lg bg-muted border border-border flex items-center justify-center text-primary mb-4">
-                    <feature.icon className="h-5 w-5" />
-                  </div>
-                  <h3 className="text-base font-semibold text-foreground">
-                    {feature.title}
-                  </h3>
-                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                    {feature.description}
-                  </p>
+              <article 
+                className="relative bg-card p-8 flex flex-col justify-between min-h-[220px] transition-colors duration-150 group" 
+                key={feature.title}
+              >
+                {/* Subtle Watermark Character in top-right exactly like user image */}
+                <div className="absolute right-6 top-4 select-none pointer-events-none text-[84px] font-bold opacity-[0.03] dark:opacity-[0.02] text-foreground font-sans transition-opacity group-hover:opacity-[0.06]">
+                  {feature.watermark}
                 </div>
-                <div className="mt-4">
+
+                <div className="space-y-4">
+                  {/* Icon + Uppercase Tag label */}
+                  <div className="flex items-center gap-2">
+                    <feature.icon className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-[10px] font-semibold text-muted-foreground tracking-widest uppercase">
+                      {feature.tag}
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className="text-base font-semibold text-foreground tracking-tight">
+                      {feature.title}
+                    </h3>
+                    <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                      {feature.description}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-6">
                   <span className={feature.pillClass}>{feature.pillText}</span>
                 </div>
               </article>
@@ -702,8 +732,8 @@ export function LandingContent() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border bg-muted px-6 py-12">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 md:flex-row md:items-center md:justify-between">
+      <footer className="relative border-t border-border bg-muted px-6 pt-12 pb-6 overflow-hidden">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 md:flex-row md:items-center md:justify-between pb-8">
           <div>
             <div className="flex items-center gap-3">
               <span className="landing-logo-mark" aria-hidden="true">
@@ -716,7 +746,7 @@ export function LandingContent() {
               who want the interface to match the work.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground justify-start md:justify-end">
             <span className="inline-flex items-center gap-1.5">
               <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
               Google OAuth
@@ -729,6 +759,13 @@ export function LandingContent() {
               <Zap className="h-4 w-4 text-[#c08532]" aria-hidden="true" />
               Fast actions
             </span>
+          </div>
+        </div>
+
+        {/* Massive brand watermark centered exactly like the uploaded reference image */}
+        <div className="w-full text-center select-none pointer-events-none mt-6 -mb-6 overflow-hidden">
+          <div className="text-[12vw] font-black tracking-tighter uppercase italic opacity-[0.04] dark:opacity-[0.02] text-foreground leading-none">
+            Ultrahuman.
           </div>
         </div>
       </footer>
