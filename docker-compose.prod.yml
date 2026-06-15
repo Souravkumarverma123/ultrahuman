@@ -43,6 +43,7 @@ services:
       GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI:-https://ultrahuman.co.in/corsair/callback}
       CORSAIR_KEK: ${CORSAIR_KEK}
       RESEND_API_KEY: ${RESEND_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
     expose:
       - "8000"
     healthcheck:
