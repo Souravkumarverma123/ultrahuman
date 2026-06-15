@@ -170,58 +170,80 @@ function ProductMockup() {
       from: "Maya from Corsair",
       subject: "Calendar access is connected",
       tag: "Read",
-      pillClass: "timeline-pill-read",
+      pillClass: "bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/40",
+      dotClass: "bg-blue-500",
     },
     {
       from: "friend@corsair.dev",
       subject: "Thursday meeting time?",
       tag: "Thinking",
-      pillClass: "timeline-pill-thinking",
+      pillClass: "bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/40 animate-pulse",
+      dotClass: "bg-amber-500",
     },
     {
       from: "Operations",
       subject: "Quarterly planning notes",
       tag: "Done",
-      pillClass: "timeline-pill-done",
+      pillClass: "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/40",
+      dotClass: "bg-emerald-500",
     },
   ];
 
   return (
     <div
-      className="ide-mockup-card p-6 bg-card border border-border"
+      className="relative overflow-hidden bg-card/70 backdrop-blur-xl border border-border/80 rounded-2xl shadow-2xl p-6 md:p-8"
       role="img"
       aria-label="Ultrahuman product mockup with inbox, calendar, command palette, and agent tool calls"
     >
-      <div className="flex items-center justify-between pb-4 border-b border-border">
+      {/* Background glow effects inside the mockup to make it look premium */}
+      <div className="absolute -top-12 -right-12 w-48 h-48 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Title Bar */}
+      <div className="flex items-center justify-between pb-4 mb-4 border-b border-border/60">
         <div className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-full bg-[#dfa88f]" />
-          <span className="w-3 h-3 rounded-full bg-[#9fc9a2]" />
-          <span className="w-3 h-3 rounded-full bg-[#9fbbe0]" />
+          <span className="w-3 h-3 rounded-full bg-[#ff5f56]/80 border border-[#e0443e]/40 shadow-sm" />
+          <span className="w-3 h-3 rounded-full bg-[#ffbd2e]/80 border border-[#df9d1e]/40 shadow-sm" />
+          <span className="w-3 h-3 rounded-full bg-[#27c93f]/80 border border-[#1aab29]/40 shadow-sm" />
         </div>
-        <div className="flex items-center gap-2 px-3 py-1 rounded bg-muted border border-border text-xs text-muted-foreground font-mono">
-          <Command className="h-3.5 w-3.5" aria-hidden="true" />
-          Schedule invite and send follow-up
+        
+        {/* Raycast/Spotlight Style Search Bar */}
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/80 border border-border/80 text-xs text-foreground font-sans w-2/3 max-w-[280px] shadow-inner">
+          <Search className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+          <span className="truncate text-muted-foreground flex-1 font-medium">Schedule invite and send follow-up</span>
+          <span className="text-[9px] font-semibold text-muted-foreground/80 bg-background border border-border px-1.5 py-0.5 rounded shadow-sm font-sans tracking-wide">
+            ⌘K
+          </span>
         </div>
       </div>
 
-      <div className="grid gap-4 mt-4 md:grid-cols-2">
-        <div className="ide-pane">
-          <div className="flex items-center justify-between pb-2 mb-2 border-b border-border text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Inbox Pane */}
+        <div className="flex flex-col">
+          <div className="flex items-center justify-between pb-2 mb-3 border-b border-border/40 text-[10px] font-bold tracking-widest text-muted-foreground/80 uppercase">
             <span>Priority inbox</span>
-            <span className="text-emerald-600 dark:text-emerald-400">Live</span>
+            <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
+              Live
+            </span>
           </div>
-          <div className="space-y-2.5">
+          
+          <div className="space-y-3">
             {threads.map((thread) => (
-              <div className="p-3 bg-card border border-border rounded-lg flex flex-col gap-1.5" key={thread.subject}>
-                <div className="flex items-start justify-between">
-                  <div className="text-xs font-semibold text-foreground">
+              <div 
+                className="p-3 bg-background/50 border border-border/60 rounded-xl flex flex-col gap-2 shadow-[0_1px_3px_rgba(0,0,0,0.01)] hover:bg-background/80 transition-colors duration-200" 
+                key={thread.subject}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-xs font-semibold text-foreground truncate max-w-[120px]">
                     {thread.from}
                   </div>
-                  <span className={thread.pillClass}>
+                  <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-semibold border ${thread.pillClass}`}>
+                    <span className={`h-1 w-1 rounded-full ${thread.dotClass}`} />
                     {thread.tag}
                   </span>
                 </div>
-                <div className="text-[11px] text-muted-foreground font-sans">
+                <div className="text-[11px] text-muted-foreground font-medium truncate">
                   {thread.subject}
                 </div>
               </div>
@@ -229,47 +251,74 @@ function ProductMockup() {
           </div>
         </div>
 
-        <div className="ide-pane">
-          <div className="flex items-center justify-between pb-2 mb-2 border-b border-border text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-            <span>Thursday</span>
+        {/* Calendar Pane */}
+        <div className="flex flex-col">
+          <div className="flex items-center justify-between pb-2 mb-3 border-b border-border/40 text-[10px] font-bold tracking-widest text-muted-foreground/80 uppercase">
+            <span>Schedule</span>
             <span>09:00</span>
           </div>
-          <div className="p-4 bg-card border border-border rounded-lg">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-foreground">
-                Product sync
-              </span>
-              <CalendarDays className="h-4 w-4 text-primary" />
+
+          <div className="p-4 bg-background/50 border border-border/60 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.01)] hover:bg-background/80 transition-colors duration-200 h-full flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-semibold text-foreground">
+                  Product sync
+                </span>
+                <div className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+                  <CalendarClock className="h-4 w-4" />
+                </div>
+              </div>
+              
+              <div className="space-y-1.5">
+                <div className="text-[11px] font-medium text-foreground flex items-center gap-1.5 flex-wrap">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  friend@corsair.dev
+                </div>
+                <div className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5 pl-3">
+                  Google Meet attached
+                </div>
+              </div>
             </div>
-            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground font-sans">
-              friend@corsair.dev
-              <br />
-              Google Meet attached
-            </p>
-            <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-muted border border-border">
-              <div className="h-full w-2/3 rounded-full bg-primary" />
+
+            <div className="mt-6">
+              <div className="flex justify-between text-[9px] text-muted-foreground font-bold uppercase tracking-wider mb-1 font-sans">
+                <span>Timeline</span>
+                <span>66%</span>
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-muted border border-border/60 relative">
+                <div className="h-full w-2/3 rounded-full bg-gradient-to-r from-primary to-orange-400" />
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="mt-4 p-4 bg-muted border border-border rounded-lg flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-            <Sparkles className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
-            Agent plan
+      {/* Execution/Agent logs pane at bottom */}
+      <div className="mt-6 p-4 bg-muted/60 border border-border/80 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-foreground">
+            <div className="p-1 rounded bg-primary/10 border border-primary/20">
+              <Sparkles className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+            </div>
+            <span>Agent Plan Executed</span>
           </div>
-          <p className="mt-1 text-[11px] text-muted-foreground font-mono">
-            send_calendar_invite -&gt; send_email
-          </p>
+          <div className="flex items-center gap-3 text-[11px] font-mono text-muted-foreground flex-wrap">
+            <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+              <CheckCircle2 className="h-3 w-3" /> calendar.create_invite
+            </span>
+            <span className="text-border">→</span>
+            <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
+              <CheckCircle2 className="h-3 w-3" /> gmail.send_email
+            </span>
+          </div>
         </div>
         <Button
           asChild
           size="sm"
-          className="button-primary h-8 px-4 text-xs"
+          className="button-primary h-9 px-4 text-xs font-semibold shadow-sm hover:shadow transition-all duration-200"
         >
           <Link href="/chat">
-            Try it
+            Try agent flow
             <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
           </Link>
         </Button>
@@ -451,7 +500,7 @@ export function LandingContent() {
       </section>
 
       {/* Workflow Section */}
-      <section id="workflow" className="border-t border-border bg-muted py-20">
+      <section id="workflow" className="py-24 bg-transparent">
         <div className="mx-auto w-full max-w-7xl px-6 grid gap-12 lg:grid-cols-[0.8fr_1.2fr]">
           <div>
             <span className="badge-pill-tag">Workflow</span>
@@ -510,7 +559,7 @@ export function LandingContent() {
       </section>
 
       {/* Search Section */}
-      <section id="search" className="border-t border-border py-20">
+      <section id="search" className="py-24 bg-transparent">
         <div className="mx-auto w-full max-w-7xl px-6 grid gap-12 lg:grid-cols-2 items-center">
           <div className="ide-mockup-card p-6 bg-card">
             <div className="flex items-center gap-3 bg-muted border border-border rounded-lg px-4 py-2 text-xs text-muted-foreground">
@@ -566,7 +615,7 @@ export function LandingContent() {
       </section>
 
       {/* Calendar Section */}
-      <section className="border-t border-border bg-muted py-20">
+      <section className="py-24 bg-transparent">
         <div className="mx-auto w-full max-w-7xl px-6 grid gap-12 lg:grid-cols-[0.9fr_1.1fr] items-center">
           <div>
             <span className="badge-pill-tag">Calendar</span>
@@ -617,7 +666,7 @@ export function LandingContent() {
       </section>
 
       {/* Agent Section */}
-      <section id="agent" className="border-t border-border py-20">
+      <section id="agent" className="py-24 bg-transparent">
         <div className="mx-auto w-full max-w-7xl px-6 grid gap-12 lg:grid-cols-2 items-center">
           <div className="ide-mockup-card p-6 bg-card space-y-4">
             <div className="p-3 bg-muted border border-border rounded-lg text-xs leading-relaxed text-foreground max-w-[90%] ml-auto">
@@ -660,7 +709,7 @@ export function LandingContent() {
       </section>
 
       {/* Capabilities Section */}
-      <section className="border-t border-border bg-muted py-20">
+      <section className="py-24 bg-transparent">
         <div className="mx-auto w-full max-w-7xl px-6">
           <div className="max-w-xl">
             <span className="badge-pill-tag">Capabilities</span>
@@ -707,8 +756,34 @@ export function LandingContent() {
         </div>
       </section>
 
+      {/* Video Demo Section */}
+      <section className="py-24 bg-transparent">
+        <div className="mx-auto w-full max-w-5xl px-6 text-center">
+          <span className="badge-pill-tag">Interactive Demo</span>
+          <h2 className="display-lg mt-6">
+            See how it&apos;s done
+          </h2>
+          <p className="mt-4 text-base text-muted-foreground max-w-xl mx-auto">
+            Watch how the unified console manages search, schedules, and agent workflows in real-time.
+          </p>
+
+          <div className="mt-12 relative rounded-2xl md:rounded-3xl overflow-hidden border border-border bg-card shadow-2xl max-w-4xl mx-auto aspect-video">
+            <video
+              src="/feature-5.mp4"
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full h-full object-cover"
+            />
+            {/* Subtle overlay reflection styling to make it feel premium */}
+            <div className="absolute inset-0 pointer-events-none bg-gradient-to-tr from-white/0 via-white/5 to-white/10 mix-blend-overlay" />
+          </div>
+        </div>
+      </section>
+
       {/* Testimonials Section */}
-      <section className="border-t border-border bg-card py-20 overflow-hidden">
+      <section className="py-24 bg-transparent overflow-hidden">
         <div className="mx-auto w-full max-w-7xl px-6 mb-12 text-center">
           <span className="badge-pill-tag">WALL OF LOVE</span>
           <h2 className="display-lg mt-6">
@@ -729,7 +804,7 @@ export function LandingContent() {
       </section>
 
       {/* Proof Notes Section */}
-      <section className="border-t border-border py-20">
+      <section className="py-24 bg-transparent">
         <div className="mx-auto w-full max-w-7xl px-6 grid gap-12 lg:grid-cols-[0.8fr_1.2fr]">
           <div>
             <span className="badge-pill-tag">Workflow proof notes</span>
@@ -754,7 +829,7 @@ export function LandingContent() {
       </section>
 
       {/* FAQ Section */}
-      <section id="faq" className="border-t border-border bg-muted py-20">
+      <section id="faq" className="py-24 bg-transparent">
         <div className="mx-auto w-full max-w-7xl px-6 grid gap-12 lg:grid-cols-[0.8fr_1.2fr]">
           <div>
             <span className="badge-pill-tag">FAQ</span>
@@ -774,7 +849,7 @@ export function LandingContent() {
       </section>
 
       {/* CTA Band */}
-      <section className="border-t border-border py-20">
+      <section className="py-24 bg-transparent">
         <div className="mx-auto max-w-7xl px-6">
           <div className="ide-mockup-card p-8 bg-card flex flex-col md:flex-row md:items-center md:justify-between gap-6 border-l-4 border-l-primary">
             <div>
@@ -807,7 +882,7 @@ export function LandingContent() {
       </section>
 
       {/* Footer */}
-      <footer className="relative border-t border-border bg-muted px-6 pt-12 pb-6 overflow-hidden">
+      <footer className="relative border-t border-border/60 bg-muted/40 px-6 pt-16 pb-8 overflow-hidden">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 md:flex-row md:items-center md:justify-between pb-8">
           <div>
             <div className="flex items-center gap-3">
