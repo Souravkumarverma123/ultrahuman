@@ -1,0 +1,21 @@
+{$DOMAIN_NAME:localhost} {
+    # Compress responses for better network efficiency
+    encode gzip zstd
+
+    # Group all API, Webhook, OAuth, SSE, and Doc endpoints
+    @api_paths {
+        path /trpc/* /api/* /events/* /webhooks/* /corsair/* /docs* /openapi.json /health
+    }
+
+    # Direct API traffic to the Express API replicas with passive health checks
+    reverse_proxy @api_paths api:8000 {
+        fail_duration 10s
+        max_fails 3
+    }
+
+    # Route all other traffic to the Next.js Frontend replicas
+    reverse_proxy web:3000 {
+        fail_duration 10s
+        max_fails 3
+    }
+}
