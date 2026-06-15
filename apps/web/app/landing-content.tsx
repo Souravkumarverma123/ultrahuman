@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { InfiniteMovingCards } from "~/components/ui/infinite-moving-cards";
+import { TextGenerateEffect } from "~/components/ui/text-generate-effect";
 
 const navItems = [
   { label: "Workflow", href: "#workflow" },
@@ -357,10 +358,12 @@ export function LandingContent() {
             Ultrahuman
           </h1>
 
-          <p className="mt-6 text-lg leading-relaxed text-muted-foreground">
-            A Corsair-powered command center for Gmail, Calendar, and the
-            agent workflows Google never made obvious.
-          </p>
+          <TextGenerateEffect
+            words="A Corsair-powered command center for Gmail, Calendar, and the agent workflows Google never made obvious."
+            className="mt-6"
+            textClassName="text-lg leading-relaxed text-muted-foreground font-normal"
+            duration={0.4}
+          />
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Button asChild size="lg" className="button-primary h-11 px-6">
@@ -497,11 +500,12 @@ export function LandingContent() {
             <h2 className="display-lg mt-6">
               Gmail advanced search, shaped like a cockpit.
             </h2>
-            <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-              Keep the power of Gmail queries, but surround them with the
-              controls people actually need: priority, thread context, draft
-              actions, and fast keyboard paths.
-            </p>
+            <TextGenerateEffect
+              words="Keep the power of Gmail queries, but surround them with the controls people actually need: priority, thread context, draft actions, and fast keyboard paths."
+              className="mt-4"
+              textClassName="text-base leading-relaxed text-muted-foreground font-normal"
+              duration={0.4}
+            />
             <div className="mt-6 flex flex-wrap gap-2">
               {["Search threads", "Draft replies", "Send mail", "Classify priority"].map(
                 (item) => (
@@ -523,10 +527,12 @@ export function LandingContent() {
             <h2 className="display-lg mt-6">
               Invites, updates, and emails belong together.
             </h2>
-            <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-              Build the schedule UI around what the user is trying to finish:
-              choose time, add attendees, attach Meet, and send a human note.
-            </p>
+            <TextGenerateEffect
+              words="Build the schedule UI around what the user is trying to finish: choose time, add attendees, attach Meet, and send a human note."
+              className="mt-4"
+              textClassName="text-base leading-relaxed text-muted-foreground font-normal"
+              duration={0.4}
+            />
           </div>
 
           <div className="ide-mockup-card p-6 bg-card">
@@ -591,11 +597,12 @@ export function LandingContent() {
             <h2 className="display-lg mt-6">
               Chat becomes useful when it can touch the tools.
             </h2>
-            <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-              Corsair MCP-style access turns the assistant into an operator for
-              the integrations users already depend on, without forcing every
-              workflow into Google&apos;s default screens.
-            </p>
+            <TextGenerateEffect
+              words="Corsair MCP-style access turns the assistant into an operator for the integrations users already depend on, without forcing every workflow into Google's default screens."
+              className="mt-4"
+              textClassName="text-base leading-relaxed text-muted-foreground font-normal"
+              duration={0.4}
+            />
             <Button asChild className="button-primary mt-6 h-10 px-6">
               <Link href="/chat">
                 Open agent
