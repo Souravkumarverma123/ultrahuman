@@ -40,33 +40,33 @@
 
 :root {
   --radius: 8px;
-  --background: #f7f7f4; /* warm cream canvas */
+  --background: #f4f3ed; /* beach cream canvas */
   --foreground: #26251e; /* near-black warm ink */
-  --card: #ffffff; /* surface-card */
+  --card: #faf9f5; /* soft cream card */
   --card-foreground: #26251e;
-  --popover: #ffffff;
+  --popover: #faf9f5;
   --popover-foreground: #26251e;
   --primary: #f54e00; /* Cursor Orange */
   --primary-foreground: #ffffff;
-  --secondary: #ffffff;
+  --secondary: #f0eee4; /* warm beach secondary */
   --secondary-foreground: #26251e;
-  --muted: #fafaf7; /* canvas-soft */
+  --muted: #f6f5ee; /* canvas-soft cream */
   --muted-foreground: #5a5852; /* body */
-  --accent: #fafaf7;
+  --accent: #f6f5ee;
   --accent-foreground: #26251e;
   --destructive: #cf2d56; /* semantic-error */
   --destructive-foreground: #ffffff;
-  --border: #e6e5e0; /* hairline */
-  --input: #e6e5e0;
+  --border: #e2dfd5; /* soft warm gray hairline */
+  --input: #e2dfd5;
   --ring: #f54e00;
 
-  --sidebar: #f7f7f4;
+  --sidebar: #f4f3ed;
   --sidebar-foreground: #5a5852;
   --sidebar-primary: #f54e00;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #ffffff;
+  --sidebar-accent: #faf9f5;
   --sidebar-accent-foreground: #26251e;
-  --sidebar-border: #e6e5e0;
+  --sidebar-border: #e2dfd5;
   --sidebar-ring: #f54e00;
 
   /* Timeline pastels */
@@ -121,24 +121,24 @@
 @layer components {
   /* Landing / Editorial Styles */
   .landing-page {
-    --background: #f7f7f4 !important;
+    --background: #f4f3ed !important;
     --foreground: #26251e !important;
-    --card: #ffffff !important;
+    --card: #faf9f5 !important;
     --card-foreground: #26251e !important;
-    --popover: #ffffff !important;
+    --popover: #faf9f5 !important;
     --popover-foreground: #26251e !important;
     --primary: #f54e00 !important;
     --primary-foreground: #ffffff !important;
-    --secondary: #ffffff !important;
+    --secondary: #f0eee4 !important;
     --secondary-foreground: #26251e !important;
-    --muted: #fafaf7 !important;
+    --muted: #f6f5ee !important;
     --muted-foreground: #5a5852 !important;
-    --accent: #fafaf7 !important;
+    --accent: #f6f5ee !important;
     --accent-foreground: #26251e !important;
-    --border: #e6e5e0 !important;
-    --input: #e6e5e0 !important;
+    --border: #e2dfd5 !important;
+    --input: #e2dfd5 !important;
     --ring: #f54e00 !important;
-    --header-bg: rgba(247, 247, 244, 0.85) !important;
+    --header-bg: rgba(244, 243, 237, 0.85) !important;
 
     background-color: var(--background) !important;
     color: var(--foreground) !important;
