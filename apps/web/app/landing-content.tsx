@@ -509,7 +509,7 @@ export function LandingContent() {
             </h2>
             <p className="mt-4 text-base leading-relaxed text-muted-foreground">
               Gmail and Calendar are powerful, but their defaults are built for
-              everyone. Ultrahuman makes your repeated path the first-class UI.
+              everyone. Ultrahuman makes your repeated tasks automated.
             </p>
           </div>
 
