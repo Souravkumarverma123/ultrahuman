@@ -882,40 +882,136 @@ export function LandingContent() {
       </section>
 
       {/* Footer */}
-      <footer className="relative border-t border-border/60 bg-muted/40 px-6 pt-16 pb-8 overflow-hidden">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 md:flex-row md:items-center md:justify-between pb-8">
-          <div>
-            <div className="flex items-center gap-3">
-              <span className="landing-logo-mark" aria-hidden="true">
-                <Sparkles className="h-4 w-4" />
-              </span>
-              <span className="font-semibold text-foreground">Ultrahuman</span>
+      <footer className="relative border-t border-border/60 bg-muted/40 px-6 pt-16 pb-12 overflow-hidden">
+        <div className="mx-auto w-full max-w-7xl">
+          <div className="flex flex-col lg:flex-row justify-between items-start gap-12 pb-16">
+            {/* Left Side: Brand and Copyright */}
+            <div className="flex flex-col gap-4">
+              <Link href="/" className="group flex items-center gap-3">
+                <span className="landing-logo-mark" aria-hidden="true">
+                  <Sparkles className="h-4 w-4" />
+                </span>
+                <span className="text-base font-semibold text-foreground">
+                  Ultrahuman
+                </span>
+              </Link>
+              <p className="text-xs text-muted-foreground mt-2">
+                © copyright Ultrahuman 2026. All rights reserved.
+              </p>
             </div>
-            <p className="mt-3 max-w-md text-xs leading-relaxed text-muted-foreground">
-              Corsair-powered email, calendar, and agent workflows for people
-              who want the interface to match the work.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground justify-start md:justify-end">
-            <span className="inline-flex items-center gap-1.5">
-              <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
-              Google OAuth
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Clock3 className="h-4 w-4 text-primary" aria-hidden="true" />
-              Realtime hooks
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Zap className="h-4 w-4 text-[#c08532]" aria-hidden="true" />
-              Fast actions
-            </span>
-          </div>
-        </div>
 
-        {/* Massive brand watermark centered exactly like the uploaded reference image */}
-        <div className="w-full text-center select-none pointer-events-none mt-6 -mb-6 overflow-hidden">
-          <div className="text-[12vw] font-black tracking-tighter uppercase italic opacity-[0.04] dark:opacity-[0.02] text-foreground leading-none">
-            Ultrahuman.
+            {/* Right Side: 4 columns */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 md:gap-16 lg:gap-20">
+              {/* Pages Column */}
+              <div className="flex flex-col gap-4">
+                <h4 className="text-xs font-semibold text-foreground tracking-wider uppercase opacity-80">Pages</h4>
+                <ul className="flex flex-col gap-2.5 text-xs text-muted-foreground">
+                  <li>
+                    <Link href="#workflow" className="hover:text-foreground transition-colors duration-150">
+                      Workflow
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="#search" className="hover:text-foreground transition-colors duration-150">
+                      Search
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="#agent" className="hover:text-foreground transition-colors duration-150">
+                      Agent
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="#faq" className="hover:text-foreground transition-colors duration-150">
+                      FAQ
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/inbox" className="hover:text-foreground transition-colors duration-150">
+                      Open App
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Socials Column */}
+              <div className="flex flex-col gap-4">
+                <h4 className="text-xs font-semibold text-foreground tracking-wider uppercase opacity-80">Socials</h4>
+                <ul className="flex flex-col gap-2.5 text-xs text-muted-foreground">
+                  <li>
+                    <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors duration-150">
+                      Twitter
+                    </a>
+                  </li>
+                  <li>
+                    <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors duration-150">
+                      GitHub
+                    </a>
+                  </li>
+                  <li>
+                    <a href="https://slack.com" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors duration-150">
+                      Slack
+                    </a>
+                  </li>
+                  <li>
+                    <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors duration-150">
+                      LinkedIn
+                    </a>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Legal Column */}
+              <div className="flex flex-col gap-4">
+                <h4 className="text-xs font-semibold text-foreground tracking-wider uppercase opacity-80">Legal</h4>
+                <ul className="flex flex-col gap-2.5 text-xs text-muted-foreground">
+                  <li>
+                    <Link href="/privacy" className="hover:text-foreground transition-colors duration-150">
+                      Privacy Policy
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/terms" className="hover:text-foreground transition-colors duration-150">
+                      Terms of Service
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/cookies" className="hover:text-foreground transition-colors duration-150">
+                      Cookie Policy
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Register Column */}
+              <div className="flex flex-col gap-4">
+                <h4 className="text-xs font-semibold text-foreground tracking-wider uppercase opacity-80">Register</h4>
+                <ul className="flex flex-col gap-2.5 text-xs text-muted-foreground">
+                  <li>
+                    <Link href="/signup" className="hover:text-foreground transition-colors duration-150">
+                      Sign Up
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/login" className="hover:text-foreground transition-colors duration-150">
+                      Login
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/forgot-password" className="hover:text-foreground transition-colors duration-150">
+                      Forgot Password
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* Watermark Brand Typography */}
+          <div className="w-full text-center select-none pointer-events-none mt-12 -mb-8 overflow-hidden">
+            <div className="text-[14vw] font-bold tracking-tight text-foreground opacity-[0.03] dark:opacity-[0.015] leading-none select-none">
+              Ultrahuman
+            </div>
           </div>
         </div>
       </footer>
