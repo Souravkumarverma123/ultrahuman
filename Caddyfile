@@ -1,4 +1,4 @@
-{$DOMAIN_NAME:localhost} {
+ultrahuman.co.in {
     # Compress responses for better network efficiency
     encode gzip zstd
 
