@@ -138,6 +138,7 @@
     --border: #e6e5e0 !important;
     --input: #e6e5e0 !important;
     --ring: #f54e00 !important;
+    --header-bg: rgba(247, 247, 244, 0.85) !important;
 
     background-color: var(--background) !important;
     color: var(--foreground) !important;
@@ -162,6 +163,7 @@
     --border: #383731 !important;
     --input: #383731 !important;
     --ring: #f54e00 !important;
+    --header-bg: rgba(30, 29, 24, 0.85) !important;
 
     background-color: var(--background) !important;
     color: var(--foreground) !important;
@@ -212,7 +214,7 @@
     top: 0;
     z-index: 30;
     border-bottom: 1px solid var(--border) !important;
-    background-color: rgba(247, 247, 244, 0.85) !important;
+    background-color: var(--header-bg) !important;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }
