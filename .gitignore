@@ -144,7 +144,6 @@ vite.config.ts.timestamp-*
 
 # Turbo cache and cookies
 .turbo/
-**/cookies/
 
 # Next.js build output
 .next
