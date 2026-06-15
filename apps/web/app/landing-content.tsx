@@ -24,6 +24,8 @@ import {
   Sparkles,
   Sun,
   Zap,
+  Github,
+  Slack,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { InfiniteMovingCards } from "~/components/ui/infinite-moving-cards";
@@ -346,61 +348,105 @@ export function LandingContent() {
         </nav>
       </header>
 
-      {/* Hero Section */}
-      <section className="mx-auto max-w-7xl px-6 py-16 lg:py-24 grid gap-12 lg:grid-cols-[0.9fr_1.1fr] items-center">
-        <div className="max-w-xl">
-          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted px-3 py-1.5 text-xs text-muted-foreground font-medium">
-            <span className="h-2 w-2 rounded-full bg-primary" />
-            Corsair-powered Gmail and Calendar workflows
+      {/* Soft gradient blur background for Sunsama style aesthetic */}
+      <div className="absolute top-0 right-0 left-0 h-[600px] bg-gradient-to-b from-[#f54e00]/5 via-transparent to-transparent blur-[120px] pointer-events-none -z-10" />
+
+      {/* Sunsama style horizontal integration logos list */}
+      <div className="mx-auto max-w-7xl px-6 pt-12 flex justify-center">
+        <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12 opacity-40 grayscale hover:opacity-75 hover:grayscale-0 transition-all duration-300">
+          <div className="flex items-center gap-2">
+            <Mail className="h-5 w-5 text-[#f54e00]" />
+            <span className="text-xs font-semibold font-mono tracking-wider">GMAIL</span>
           </div>
-
-          <h1 className="display-mega mt-8 font-normal text-foreground tracking-tight">
-            Ultrahuman
-          </h1>
-
-          <TextGenerateEffect
-            words="A Corsair-powered command center for Gmail, Calendar, and the agent workflows Google never made obvious."
-            className="mt-6"
-            textClassName="text-lg leading-relaxed text-muted-foreground font-normal"
-            duration={0.4}
-          />
-
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Button asChild size="lg" className="button-primary h-11 px-6">
-              <Link href="/inbox">
-                Open app
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </Link>
-            </Button>
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="button-secondary h-11 px-6"
-            >
-              <Link href="/chat">
-                Try agent flow
-                <Bot className="h-4 w-4" aria-hidden="true" />
-              </Link>
-            </Button>
+          <div className="flex items-center gap-2">
+            <CalendarDays className="h-5 w-5 text-emerald-600" />
+            <span className="text-xs font-semibold font-mono tracking-wider">CALENDAR</span>
           </div>
-
-          <div className="mt-12 grid grid-cols-3 gap-4 border-t border-border pt-8">
-            {metrics.map((metric) => (
-              <div key={metric.label}>
-                <div className="text-2xl font-normal text-foreground">
-                  {metric.value}
-                </div>
-                <div className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                  {metric.label}
-                </div>
-              </div>
-            ))}
+          <div className="flex items-center gap-2">
+            <Github className="h-5 w-5 text-foreground" />
+            <span className="text-xs font-semibold font-mono tracking-wider">GITHUB</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Slack className="h-5 w-5 text-indigo-500" />
+            <span className="text-xs font-semibold font-mono tracking-wider">SLACK</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Database className="h-5 w-5 text-purple-500" />
+            <span className="text-xs font-semibold font-mono tracking-wider">NOTION</span>
           </div>
         </div>
+      </div>
 
-        <div>
-          <ProductMockup />
+      {/* Hero Section */}
+      <section className="mx-auto max-w-7xl px-6 py-12 md:py-16">
+        <div className="bg-card border border-border rounded-[24px] md:rounded-[32px] p-8 md:p-12 shadow-sm hover:shadow-md transition-shadow duration-300">
+          <div className="grid gap-12 lg:grid-cols-[0.95fr_1.05fr] items-center">
+            <div className="max-w-xl">
+              {/* Integration badge pill */}
+              <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground font-medium mb-8">
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                <span>Ultrahuman</span>
+                <span className="text-border">|</span>
+                <span className="flex items-center gap-1">
+                  <Mail className="h-3 w-3 text-[#f54e00]" />
+                  Gmail
+                </span>
+                <span className="text-border">+</span>
+                <span className="flex items-center gap-1">
+                  <CalendarDays className="h-3 w-3 text-emerald-600" />
+                  Calendar
+                </span>
+              </div>
+
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold tracking-tight text-foreground leading-[1.08]">
+                Pull Gmail & Calendar into your daily plan.
+              </h1>
+
+              <TextGenerateEffect
+                words="Keep the power of Google workflows, but wrap them in the controls you actually need: unified inbox triage, time blocking, and automated agent assistance."
+                className="mt-6"
+                textClassName="text-lg leading-relaxed text-muted-foreground font-normal"
+                duration={0.4}
+              />
+
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <Button asChild size="lg" className="button-primary h-11 px-6">
+                  <Link href="/inbox">
+                    Open app
+                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  size="lg"
+                  variant="outline"
+                  className="button-secondary h-11 px-6"
+                >
+                  <Link href="/chat">
+                    Try agent flow
+                    <Bot className="h-4 w-4" aria-hidden="true" />
+                  </Link>
+                </Button>
+              </div>
+
+              <div className="mt-12 grid grid-cols-3 gap-4 border-t border-border pt-8 font-sans">
+                {metrics.map((metric) => (
+                  <div key={metric.label}>
+                    <div className="text-2xl font-normal text-foreground">
+                      {metric.value}
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                      {metric.label}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <ProductMockup />
+            </div>
+          </div>
         </div>
       </section>
 
