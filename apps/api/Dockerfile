@@ -22,7 +22,7 @@ COPY --from=builder /app/out/full/ .
 COPY turbo.json turbo.json
 
 # Generate DB types and build the api bundle
-RUN pnpm db:generate
+RUN DATABASE_URL=postgresql://dummy:dummy@localhost:5432/dummy pnpm db:generate
 RUN pnpm build --filter=@repo/api...
 
 FROM base AS runner
