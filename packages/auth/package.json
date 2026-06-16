@@ -10,7 +10,7 @@
   "dependencies": {
     "@repo/database": "workspace:*",
     "@repo/logger": "workspace:*",
-    "better-auth": "^1.2.8",
+    "better-auth": "^1.2.9",
     "dotenv": "^17.2.3",
     "pg": "^8.16.3",
     "zod": "^4.3.5"

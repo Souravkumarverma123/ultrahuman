@@ -10,7 +10,16 @@ if (!process.env.CORSAIR_KEK) {
   throw new Error("CORSAIR_KEK is not set — generate one with: openssl rand -hex 32");
 }
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  max: process.env.DATABASE_POOL_MAX ? Number.parseInt(process.env.DATABASE_POOL_MAX, 10) : 20,
+  idleTimeoutMillis: process.env.DATABASE_POOL_IDLE_TIMEOUT
+    ? Number.parseInt(process.env.DATABASE_POOL_IDLE_TIMEOUT, 10)
+    : 30000,
+  connectionTimeoutMillis: process.env.DATABASE_POOL_CONN_TIMEOUT
+    ? Number.parseInt(process.env.DATABASE_POOL_CONN_TIMEOUT, 10)
+    : 2000,
+});
 
 export const corsair = createCorsair({
   plugins: [gmail(), googlecalendar()],
@@ -21,6 +30,7 @@ export const corsair = createCorsair({
 
 export type CorsairInstance = typeof corsair;
 
+// @ts-ignore - corsair oauth module resolution mismatch under NodeNext
 export { generateOAuthUrl, processOAuthCallback } from "corsair/oauth";
 export * from "./factories";
 

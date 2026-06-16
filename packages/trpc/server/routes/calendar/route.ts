@@ -1,7 +1,8 @@
 import { z } from "../../schema";
-import { corsair, generateOAuthUrl } from "@repo/services/corsair";
-import { protectedProcedure, router, tenantProcedure } from "../../trpc";
+import { corsair } from "@repo/services/corsair";
+import { router, tenantProcedure } from "../../trpc";
 import { generatePath } from "../../utils/path-generator";
+import { BaseCorsairRouter } from "../../factories/corsair-router.factory";
 
 const TAGS = ["Calendar"];
 const getPath = generatePath("/calendar");
@@ -35,37 +36,17 @@ const calendarEventSchema = z.object({
 
 // ─── Router ──────────────────────────────────────────────────────────────────
 
-export const calendarRouter = router({
-  // Get OAuth connect URL for Google Calendar
-  getAuthUrl: tenantProcedure
-    .meta({ openapi: { method: "GET", path: getPath("/auth-url"), tags: TAGS } })
-    .input(z.object({ tenantId: z.string() }))
-    .output(z.object({ url: z.string() }))
-    .query(async ({ ctx }) => {
-      const tenantId = ctx.session.user.id;
-      const baseUrl = process.env.BASE_URL || "http://localhost:8000";
-      const redirectUri = `${baseUrl}/corsair/callback`;
-      const { url } = await generateOAuthUrl(corsair, "googlecalendar", {
-        tenantId,
-        redirectUri,
-      });
-      return { url };
-    }),
+class CalendarRouterFactory extends BaseCorsairRouter<any> {
+  protected pluginName = "googlecalendar" as const;
+  protected getPath = getPath;
+  protected tags = TAGS;
+}
 
-  // Check if Google Calendar is connected
-  getConnectionStatus: tenantProcedure
-    .meta({ openapi: { method: "GET", path: getPath("/connection-status"), tags: TAGS } })
-    .input(z.object({ tenantId: z.string() }))
-    .output(z.object({ connected: z.boolean(), email: z.string().optional() }))
-    .query(async ({ ctx }) => {
-      try {
-        const status = await corsair.manage.connectionStatus.get({ tenantId: ctx.session.user.id });
-        const connected = status.googlecalendar === "connected";
-        return { connected };
-      } catch {
-        return { connected: false };
-      }
-    }),
+const factory = new CalendarRouterFactory();
+
+export const calendarRouter = router({
+  getAuthUrl: factory.createAuthUrlProcedure(),
+  getConnectionStatus: factory.createConnectionStatusProcedure(),
 
   // List events in a date range
   listEvents: tenantProcedure

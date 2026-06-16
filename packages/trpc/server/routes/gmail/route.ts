@@ -1,7 +1,8 @@
 import { z } from "../../schema";
-import { corsair, generateOAuthUrl } from "@repo/services/corsair";
-import { protectedProcedure, router, tenantProcedure } from "../../trpc";
+import { corsair } from "@repo/services/corsair";
+import { router, tenantProcedure } from "../../trpc";
 import { generatePath } from "../../utils/path-generator";
+import { BaseCorsairRouter } from "../../factories/corsair-router.factory";
 import type {} from "express-serve-static-core";
 
 const TAGS = ["Gmail"];
@@ -201,37 +202,17 @@ async function fetchAndParseThreads(client: any, rawThreads: any[]): Promise<any
 
 // ─── Router ──────────────────────────────────────────────────────────────────
 
-export const gmailRouter = router({
-  // Get the OAuth connect URL for Gmail
-  getAuthUrl: tenantProcedure
-    .meta({ openapi: { method: "GET", path: getPath("/auth-url"), tags: TAGS } })
-    .input(z.object({ tenantId: z.string() }))
-    .output(z.object({ url: z.string() }))
-    .query(async ({ ctx }) => {
-      const tenantId = ctx.session.user.id;
-      const baseUrl = process.env.BASE_URL || "http://localhost:8000";
-      const redirectUri = `${baseUrl}/corsair/callback`;
-      const { url } = await generateOAuthUrl(corsair, "gmail", {
-        tenantId,
-        redirectUri,
-      });
-      return { url };
-    }),
+class GmailRouterFactory extends BaseCorsairRouter<any> {
+  protected pluginName = "gmail" as const;
+  protected getPath = getPath;
+  protected tags = TAGS;
+}
 
-  // Check if Gmail is connected for a tenant
-  getConnectionStatus: tenantProcedure
-    .meta({ openapi: { method: "GET", path: getPath("/connection-status"), tags: TAGS } })
-    .input(z.object({ tenantId: z.string() }))
-    .output(z.object({ connected: z.boolean(), email: z.string().optional() }))
-    .query(async ({ ctx }) => {
-      try {
-        const status = await corsair.manage.connectionStatus.get({ tenantId: ctx.session.user.id });
-        const connected = status.gmail === "connected";
-        return { connected };
-      } catch {
-        return { connected: false };
-      }
-    }),
+const factory = new GmailRouterFactory();
+
+export const gmailRouter = router({
+  getAuthUrl: factory.createAuthUrlProcedure(),
+  getConnectionStatus: factory.createConnectionStatusProcedure(),
 
   // List email threads
   listThreads: tenantProcedure

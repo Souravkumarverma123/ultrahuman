@@ -7,7 +7,7 @@ import { authClient } from "~/lib/auth-client";
 export function useTenant() {
   const { data: session } = authClient.useSession();
 
-  const tenantId = session?.user?.id ?? "demo-user-1";
+  const tenantId = session?.user?.id ?? "";
 
   return {
     tenantId,

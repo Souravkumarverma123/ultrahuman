@@ -1,8 +1,7 @@
 import { useEffect } from "react";
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { trpc } from "~/trpc/client";
-
-type JsonRecord = Record<string, unknown>;
+import { isRecord, getString, getStringArray, type JsonRecord } from "@repo/utils/sanitizers";
 
 type CorsairRealtimeEvent = {
   type: "corsair.webhook";
@@ -62,20 +61,6 @@ type CalendarEvent = {
 type CalendarEventCollection = {
   events: CalendarEvent[];
 };
-
-function isRecord(value: unknown): value is JsonRecord {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function getString(value: unknown) {
-  return typeof value === "string" ? value : undefined;
-}
-
-function getStringArray(value: unknown) {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string")
-    : undefined;
-}
 
 function getRecordArray(value: unknown) {
   return Array.isArray(value)

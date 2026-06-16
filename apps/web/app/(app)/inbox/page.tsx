@@ -135,12 +135,233 @@ function InboxPageContent() {
     { enabled: isConnected && selectedThreadId !== null },
   );
 
+  const utils = trpc.useUtils();
+
   // Mutations
   const sendEmailMutation = trpc.gmail.sendEmail.useMutation();
-  const archiveMutation = trpc.gmail.archiveThread.useMutation();
-  const markReadMutation = trpc.gmail.markAsRead.useMutation();
-  const starMutation = trpc.gmail.starThread.useMutation();
-  const trashMutation = trpc.gmail.trashThread.useMutation();
+
+  const archiveMutation = trpc.gmail.archiveThread.useMutation({
+    onMutate: async ({ threadId }) => {
+      await utils.gmail.listThreads.cancel({
+        tenantId,
+        labelIds: activeFolder === "ARCHIVE" ? undefined : labelIds,
+        q: searchQuery || undefined,
+      });
+
+      const previousThreads = utils.gmail.listThreads.getData({
+        tenantId,
+        labelIds: activeFolder === "ARCHIVE" ? undefined : labelIds,
+        q: searchQuery || undefined,
+      });
+
+      utils.gmail.listThreads.setData(
+        {
+          tenantId,
+          labelIds: activeFolder === "ARCHIVE" ? undefined : labelIds,
+          q: searchQuery || undefined,
+        },
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            threads: old.threads.filter((t) => t.id !== threadId),
+          };
+        }
+      );
+
+      return { previousThreads };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousThreads) {
+        utils.gmail.listThreads.setData(
+          {
+            tenantId,
+            labelIds: activeFolder === "ARCHIVE" ? undefined : labelIds,
+            q: searchQuery || undefined,
+          },
+          context.previousThreads
+        );
+      }
+    },
+    onSettled: () => {
+      utils.gmail.listThreads.invalidate({
+        tenantId,
+        labelIds: activeFolder === "ARCHIVE" ? undefined : labelIds,
+        q: searchQuery || undefined,
+      });
+    },
+  });
+
+  const markReadMutation = trpc.gmail.markAsRead.useMutation({
+    onMutate: async ({ threadId }) => {
+      await utils.gmail.listThreads.cancel({
+        tenantId,
+        labelIds: activeFolder === "ARCHIVE" ? undefined : labelIds,
+        q: searchQuery || undefined,
+      });
+
+      const previousThreads = utils.gmail.listThreads.getData({
+        tenantId,
+        labelIds: activeFolder === "ARCHIVE" ? undefined : labelIds,
+        q: searchQuery || undefined,
+      });
+
+      utils.gmail.listThreads.setData(
+        {
+          tenantId,
+          labelIds: activeFolder === "ARCHIVE" ? undefined : labelIds,
+          q: searchQuery || undefined,
+        },
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            threads: old.threads.map((t) => {
+              if (t.id === threadId) {
+                return { ...t, isRead: true };
+              }
+              return t;
+            }),
+          };
+        }
+      );
+
+      return { previousThreads };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousThreads) {
+        utils.gmail.listThreads.setData(
+          {
+            tenantId,
+            labelIds: activeFolder === "ARCHIVE" ? undefined : labelIds,
+            q: searchQuery || undefined,
+          },
+          context.previousThreads
+        );
+      }
+    },
+    onSettled: () => {
+      utils.gmail.listThreads.invalidate({
+        tenantId,
+        labelIds: activeFolder === "ARCHIVE" ? undefined : labelIds,
+        q: searchQuery || undefined,
+      });
+    },
+  });
+
+  const starMutation = trpc.gmail.starThread.useMutation({
+    onMutate: async ({ threadId, starred }) => {
+      await utils.gmail.listThreads.cancel({
+        tenantId,
+        labelIds: activeFolder === "ARCHIVE" ? undefined : labelIds,
+        q: searchQuery || undefined,
+      });
+
+      const previousThreads = utils.gmail.listThreads.getData({
+        tenantId,
+        labelIds: activeFolder === "ARCHIVE" ? undefined : labelIds,
+        q: searchQuery || undefined,
+      });
+
+      utils.gmail.listThreads.setData(
+        {
+          tenantId,
+          labelIds: activeFolder === "ARCHIVE" ? undefined : labelIds,
+          q: searchQuery || undefined,
+        },
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            threads: old.threads.map((t) => {
+              if (t.id === threadId) {
+                return { ...t, isStarred: starred };
+              }
+              return t;
+            }).filter((t) => {
+              if (activeFolder === "STARRED" && !starred) {
+                return false;
+              }
+              return true;
+            }),
+          };
+        }
+      );
+
+      return { previousThreads };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousThreads) {
+        utils.gmail.listThreads.setData(
+          {
+            tenantId,
+            labelIds: activeFolder === "ARCHIVE" ? undefined : labelIds,
+            q: searchQuery || undefined,
+          },
+          context.previousThreads
+        );
+      }
+    },
+    onSettled: () => {
+      utils.gmail.listThreads.invalidate({
+        tenantId,
+        labelIds: activeFolder === "ARCHIVE" ? undefined : labelIds,
+        q: searchQuery || undefined,
+      });
+    },
+  });
+
+  const trashMutation = trpc.gmail.trashThread.useMutation({
+    onMutate: async ({ threadId }) => {
+      await utils.gmail.listThreads.cancel({
+        tenantId,
+        labelIds: activeFolder === "ARCHIVE" ? undefined : labelIds,
+        q: searchQuery || undefined,
+      });
+
+      const previousThreads = utils.gmail.listThreads.getData({
+        tenantId,
+        labelIds: activeFolder === "ARCHIVE" ? undefined : labelIds,
+        q: searchQuery || undefined,
+      });
+
+      utils.gmail.listThreads.setData(
+        {
+          tenantId,
+          labelIds: activeFolder === "ARCHIVE" ? undefined : labelIds,
+          q: searchQuery || undefined,
+        },
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            threads: old.threads.filter((t) => t.id !== threadId),
+          };
+        }
+      );
+
+      return { previousThreads };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousThreads) {
+        utils.gmail.listThreads.setData(
+          {
+            tenantId,
+            labelIds: activeFolder === "ARCHIVE" ? undefined : labelIds,
+            q: searchQuery || undefined,
+          },
+          context.previousThreads
+        );
+      }
+    },
+    onSettled: () => {
+      utils.gmail.listThreads.invalidate({
+        tenantId,
+        labelIds: activeFolder === "ARCHIVE" ? undefined : labelIds,
+        q: searchQuery || undefined,
+      });
+    },
+  });
 
   const threads = useMemo(() => threadsQuery.data?.threads ?? [], [threadsQuery.data?.threads]);
   const selectedThread = threadDetailQuery.data;
@@ -176,21 +397,25 @@ function InboxPageContent() {
       },
       e: () => {
         if (!selectedThreadId) return;
+        const currentId = selectedThreadId;
+        const nextT = threads[selectedIndex + 1];
+        const prevT = threads[selectedIndex - 1];
+        if (selectedIndex < threads.length - 1 && nextT) {
+          setSelectedThreadId(nextT.id);
+        } else if (threads.length > 1 && prevT) {
+          setSelectedThreadId(prevT.id);
+        } else {
+          setSelectedThreadId(null);
+        }
         archiveMutation.mutate(
-          { tenantId, threadId: selectedThreadId },
+          { tenantId, threadId: currentId },
           {
             onSuccess: () => {
               toast.success("Thread archived");
-              threadsQuery.refetch();
-              const nextT = threads[selectedIndex + 1];
-              const prevT = threads[selectedIndex - 1];
-              if (selectedIndex < threads.length - 1 && nextT) {
-                setSelectedThreadId(nextT.id);
-              } else if (threads.length > 1 && prevT) {
-                setSelectedThreadId(prevT.id);
-              } else {
-                setSelectedThreadId(null);
-              }
+            },
+            onError: (err) => {
+              setSelectedThreadId(currentId);
+              toast.error(`Failed to archive: ${err.message}`);
             },
           },
         );
@@ -200,12 +425,25 @@ function InboxPageContent() {
         const currentThread = threads.find((t) => t.id === selectedThreadId);
         if (!currentThread) return;
         const targetStarred = !currentThread.isStarred;
+        if (activeFolder === "STARRED" && !targetStarred) {
+          const nextT = threads[selectedIndex + 1];
+          const prevT = threads[selectedIndex - 1];
+          if (selectedIndex < threads.length - 1 && nextT) {
+            setSelectedThreadId(nextT.id);
+          } else if (threads.length > 1 && prevT) {
+            setSelectedThreadId(prevT.id);
+          } else {
+            setSelectedThreadId(null);
+          }
+        }
         starMutation.mutate(
           { tenantId, threadId: selectedThreadId, starred: targetStarred },
           {
             onSuccess: () => {
               toast.success(targetStarred ? "Starred" : "Unstarred");
-              threadsQuery.refetch();
+            },
+            onError: (err) => {
+              toast.error(`Failed to star: ${err.message}`);
             },
           },
         );
@@ -572,13 +810,24 @@ function InboxPageContent() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
+                        const targetStarred = !thread.isStarred;
+                        if (activeFolder === "STARRED" && !targetStarred && thread.id === selectedThreadId) {
+                          setSelectedThreadId(null);
+                        }
                         starMutation.mutate(
                           {
                             tenantId,
                             threadId: thread.id,
-                            starred: !thread.isStarred,
+                            starred: targetStarred,
                           },
-                          { onSuccess: () => threadsQuery.refetch() },
+                          {
+                            onSuccess: () => {
+                              toast.success(targetStarred ? "Starred" : "Unstarred");
+                            },
+                            onError: (err) => {
+                              toast.error(`Failed to star: ${err.message}`);
+                            },
+                          },
                         );
                       }}
                       className="text-muted-foreground hover:text-amber-500 transition-colors"
@@ -618,18 +867,22 @@ function InboxPageContent() {
                     <X className="h-4 w-4" />
                   </Button>
                   <Button
-                    onClick={() =>
+                    onClick={() => {
+                      const currentId = selectedThread.id;
+                      setSelectedThreadId(null);
                       archiveMutation.mutate(
-                        { tenantId, threadId: selectedThread.id },
+                        { tenantId, threadId: currentId },
                         {
                           onSuccess: () => {
                             toast.success("Thread archived");
-                            setSelectedThreadId(null);
-                            threadsQuery.refetch();
+                          },
+                          onError: (err) => {
+                            setSelectedThreadId(currentId);
+                            toast.error(`Failed to archive: ${err.message}`);
                           },
                         },
-                      )
-                    }
+                      );
+                    }}
                     variant="outline"
                     size="sm"
                     className="gap-1 text-xs"
@@ -638,18 +891,22 @@ function InboxPageContent() {
                     <kbd className="text-[10px] opacity-40">e</kbd>
                   </Button>
                   <Button
-                    onClick={() =>
+                    onClick={() => {
+                      const currentId = selectedThread.id;
+                      setSelectedThreadId(null);
                       trashMutation.mutate(
-                        { tenantId, threadId: selectedThread.id },
+                        { tenantId, threadId: currentId },
                         {
                           onSuccess: () => {
                             toast.success("Moved to Trash");
-                            setSelectedThreadId(null);
-                            threadsQuery.refetch();
+                          },
+                          onError: (err) => {
+                            setSelectedThreadId(currentId);
+                            toast.error(`Failed to move to Trash: ${err.message}`);
                           },
                         },
-                      )
-                    }
+                      );
+                    }}
                     variant="outline"
                     size="sm"
                     className="gap-1 text-xs"

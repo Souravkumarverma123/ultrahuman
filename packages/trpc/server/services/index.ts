@@ -1,3 +1,2 @@
-import UserService from "@repo/services/user";
-
-export const userService = new UserService();
+// Deprecated: UserService imports and instances removed
+export {};

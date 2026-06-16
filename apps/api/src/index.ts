@@ -24,6 +24,9 @@ async function init() {
 
     const shutdown = async () => {
       logger.info("Shutdown signal received. Closing server and database pools...");
+      if (typeof server.closeAllConnections === "function") {
+        server.closeAllConnections();
+      }
       server.close(async () => {
         logger.info("HTTP server closed.");
         await closeCorsairPool();
