@@ -13,6 +13,10 @@ import {
   Video,
   Mail,
   CalendarDays,
+  Pencil,
+  MoreHorizontal,
+  Bell,
+  X,
 } from "lucide-react";
 import { trpc } from "~/trpc/client";
 import { useTenant } from "~/hooks/use-tenant";
@@ -44,6 +48,8 @@ export default function CalendarPage() {
     startOfWeek(new Date(), { weekStartsOn: 1 }),
   );
   const [createOpen, setCreateOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+
 
   // Form states for creating event / invite
   const [summary, setSummary] = useState("");
@@ -81,6 +87,31 @@ export default function CalendarPage() {
   const createEventMutation = trpc.calendar.createEvent.useMutation();
   const createInviteMutation = trpc.calendar.createInvite.useMutation();
   const deleteEventMutation = trpc.calendar.deleteEvent.useMutation();
+  const updateRSVPMutation = trpc.calendar.updateRSVP.useMutation();
+
+  const handleUpdateRSVP = (eventId: string, responseStatus: "accepted" | "declined" | "tentative") => {
+    updateRSVPMutation.mutate(
+      {
+        tenantId,
+        eventId,
+        responseStatus,
+      },
+      {
+        onSuccess: (data) => {
+          toast.success(`RSVP status updated to ${responseStatus === "tentative" ? "maybe" : responseStatus}`);
+          eventsQuery.refetch().then((res) => {
+            const updatedEvent = res.data?.events?.find((e: any) => e.id === eventId);
+            if (updatedEvent) {
+              setSelectedEvent(updatedEvent);
+            }
+          });
+        },
+        onError: (err) => {
+          toast.error(`Failed to update RSVP status: ${err.message}`);
+        },
+      }
+    );
+  };
 
   const events = eventsQuery.data?.events ?? [];
 
@@ -310,8 +341,9 @@ export default function CalendarPage() {
                         key={event.id}
                         onClick={(e) => {
                           e.stopPropagation(); // Avoid triggering column click
+                          setSelectedEvent(event);
                         }}
-                        className="p-3 bg-card border border-border/80 rounded-xl shadow-sm hover:shadow-md transition-all space-y-2 group"
+                        className="p-3 bg-card border border-border/80 rounded-xl shadow-sm hover:shadow-md transition-all space-y-2 group cursor-pointer"
                       >
                         <div className="flex justify-between items-start">
                           <h4 className="text-xs font-bold text-foreground line-clamp-1 leading-snug">
@@ -518,6 +550,253 @@ export default function CalendarPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Event Details Popup */}
+      <Dialog open={!!selectedEvent} onOpenChange={(open) => !open && setSelectedEvent(null)}>
+        <DialogContent
+          showCloseButton={false}
+          className="max-w-md p-0 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-2xl"
+        >
+          {selectedEvent && (() => {
+            const start = parseISO(selectedEvent.startDateTime);
+            const end = parseISO(selectedEvent.endDateTime);
+            const dateFormatted = format(start, "EEEE, d MMMM");
+            const startTimeFormatted = format(start, "h:mm");
+            const endTimeFormatted = format(end, "h:mm a").toLowerCase().replace(" ", "");
+            const timeDisplay = `${dateFormatted}  •  ${startTimeFormatted} – ${endTimeFormatted}`;
+
+            const attendees = selectedEvent.attendees || [];
+            const awaitingCount = attendees.filter(
+              (a: any) => !a.responseStatus || a.responseStatus === "needsAction"
+            ).length;
+
+            const currentUserAttendee = attendees.find((a: any) => a.self) ||
+              (selectedEvent.organizerEmail && attendees.find((a: any) => a.email?.toLowerCase() === selectedEvent.organizerEmail.toLowerCase())) ||
+              (tenantId && attendees.find((a: any) => a.email?.toLowerCase() === tenantId.toLowerCase()));
+            const currentRsvp = currentUserAttendee?.responseStatus || "needsAction";
+
+            const isYes = currentRsvp === "accepted";
+            const isNo = currentRsvp === "declined";
+            const isMaybe = currentRsvp === "tentative";
+
+            const yesClass = isYes 
+              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25 font-semibold"
+              : "text-muted-foreground border-border hover:bg-muted hover:text-foreground";
+
+            const noClass = isNo
+              ? "bg-destructive/10 text-destructive border-destructive/25 font-semibold"
+              : "text-muted-foreground border-border hover:bg-muted hover:text-foreground";
+
+            const maybeClass = isMaybe
+              ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25 font-semibold"
+              : "text-muted-foreground border-border hover:bg-muted hover:text-foreground";
+
+            return (
+              <div className="flex flex-col">
+                {/* Header Action Bar */}
+                <div className="flex justify-end items-center gap-1.5 px-4 pt-3 text-muted-foreground">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-full hover:bg-muted hover:text-foreground"
+                    title="Edit Event"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      handleDeleteEvent(selectedEvent.id);
+                      setSelectedEvent(null);
+                    }}
+                    className="h-8 w-8 rounded-full hover:bg-muted hover:text-destructive"
+                    title="Delete Event"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-full hover:bg-muted hover:text-foreground"
+                    title="More options"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setSelectedEvent(null)}
+                    className="h-8 w-8 rounded-full hover:bg-muted hover:text-foreground"
+                    title="Close"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                {/* Main Body */}
+                <div className="px-6 pb-6 space-y-6">
+                  {/* Title & Time */}
+                  <div className="flex gap-4 items-start">
+                    {/* Brand primary orange dot */}
+                    <div className="h-4.5 w-4.5 bg-primary rounded-md shrink-0 mt-1.5" />
+                    <div>
+                      <h3 className="text-xl font-medium tracking-tight text-foreground leading-7">
+                        {selectedEvent.summary}
+                      </h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {timeDisplay}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Location (optional) */}
+                  {selectedEvent.location && (
+                    <div className="flex gap-4 items-start text-sm">
+                      <MapPin className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                      <span className="text-foreground">{selectedEvent.location}</span>
+                    </div>
+                  )}
+
+                  {/* Meet Link (optional) */}
+                  {selectedEvent.meetLink && (
+                    <div className="flex gap-4 items-start text-sm">
+                      <Video className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                      <div>
+                        <a
+                          href={selectedEvent.meetLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-primary hover:underline font-medium"
+                        >
+                          Join with Google Meet
+                        </a>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Description (optional) */}
+                  {selectedEvent.description && (
+                    <div className="bg-muted/40 p-3.5 rounded-xl border border-border/60 text-sm whitespace-pre-wrap text-muted-foreground">
+                      {selectedEvent.description}
+                    </div>
+                  )}
+
+                  {/* Guests */}
+                  {attendees.length > 0 && (
+                    <div className="flex gap-4 items-start text-sm">
+                      <Users className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                      <div className="space-y-3 flex-1">
+                        {/* Guest Summary Info */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-foreground font-medium">
+                            {attendees.length} guests
+                            {awaitingCount > 0 && (
+                              <span className="text-muted-foreground text-xs ml-1.5 font-normal">
+                                {awaitingCount} awaiting
+                              </span>
+                            )}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted"
+                          >
+                            <Mail className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        {/* Guest List with Avatars */}
+                        <div className="space-y-2.5 max-h-48 overflow-y-auto pr-1">
+                          {attendees.map((attendee: any, idx: number) => {
+                            const nameOrEmail = attendee.displayName || attendee.email;
+                            const initial = nameOrEmail.charAt(0).toUpperCase();
+                            const isAccepted = attendee.responseStatus === "accepted";
+                            const isDeclined = attendee.responseStatus === "declined";
+
+                            return (
+                              <div key={idx} className="flex items-center justify-between text-xs py-0.5">
+                                <div className="flex items-center gap-3">
+                                  {/* Avatar circle */}
+                                  <div className="h-7 w-7 rounded-full bg-primary/10 border border-primary/20 text-primary flex items-center justify-center font-bold uppercase text-[11px] shrink-0">
+                                    {initial}
+                                  </div>
+                                  <span className="text-foreground font-medium truncate max-w-[180px]" title={attendee.email}>
+                                    {nameOrEmail}
+                                  </span>
+                                </div>
+
+                                {attendee.responseStatus && (
+                                  <span
+                                    className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                                      isAccepted
+                                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                                        : isDeclined
+                                        ? "bg-destructive/10 text-destructive"
+                                        : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                                    }`}
+                                  >
+                                    {attendee.responseStatus}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Notification Section */}
+                  <div className="flex gap-4 items-start text-sm">
+                    <Bell className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                    <span className="text-foreground">30 minutes before</span>
+                  </div>
+
+                  {/* Calendar Owner Section */}
+                  <div className="flex gap-4 items-start text-sm">
+                    <CalendarIcon className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                    <span className="text-foreground truncate" title={selectedEvent.organizerEmail || tenantId}>
+                      {selectedEvent.organizerEmail || tenantId}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Going Footer Action Bar */}
+                <div className="border-t border-border px-6 py-4 flex items-center justify-between bg-muted/20 text-sm">
+                  <span className="text-foreground font-medium">Going?</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleUpdateRSVP(selectedEvent.id, "accepted")}
+                      disabled={updateRSVPMutation.isPending}
+                      className={`px-4 py-1.5 rounded-full border transition-all font-medium text-xs disabled:opacity-50 ${yesClass}`}
+                    >
+                      Yes
+                    </button>
+                    <button
+                      onClick={() => handleUpdateRSVP(selectedEvent.id, "declined")}
+                      disabled={updateRSVPMutation.isPending}
+                      className={`px-4 py-1.5 rounded-full border transition-all font-medium text-xs disabled:opacity-50 ${noClass}`}
+                    >
+                      No
+                    </button>
+                    <button
+                      onClick={() => handleUpdateRSVP(selectedEvent.id, "tentative")}
+                      disabled={updateRSVPMutation.isPending}
+                      className={`px-4 py-1.5 rounded-full border transition-all font-medium text-xs disabled:opacity-50 ${maybeClass}`}
+                    >
+                      Maybe
+                    </button>
+                    <button className="p-1.5 rounded-full border border-border hover:bg-muted hover:text-foreground transition-all text-muted-foreground">
+                      <ChevronRight className="h-3.5 w-3.5 rotate-90" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>

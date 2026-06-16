@@ -5,4 +5,6 @@ import * as schema from "./schema";
 
 export const db = drizzle(env.DATABASE_URL, { schema });
 export * from "drizzle-orm";
+export * from "./schema";
 export default db;
+

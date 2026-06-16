@@ -468,6 +468,9 @@ importers:
       '@repo/auth':
         specifier: workspace:*
         version: link:../auth
+      '@repo/database':
+        specifier: workspace:*
+        version: link:../database
       '@repo/services':
         specifier: workspace:*
         version: link:../services

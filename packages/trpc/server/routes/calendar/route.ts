@@ -307,6 +307,86 @@ export const calendarRouter = router({
       return { success: true };
     }),
 
+  // Update RSVP status for the current user
+  updateRSVP: protectedProcedure
+    .meta({ openapi: { method: "POST", path: getPath("/events/:eventId/rsvp"), tags: TAGS } })
+    .input(
+      z.object({
+        tenantId: z.string(),
+        eventId: z.string(),
+        calendarId: z.string().optional().default("primary"),
+        responseStatus: z.enum(["accepted", "declined", "tentative", "needsAction"]),
+      }),
+    )
+    .output(z.object({ success: z.boolean() }))
+    .mutation(async ({ input, ctx }) => {
+      const client = corsair.withTenant(ctx.session.user.id);
+      
+      // 1. Fetch the existing event to get the current list of attendees
+      const event = (await client.googlecalendar.api.events.get({
+        calendarId: input.calendarId,
+        id: input.eventId,
+      })) as any;
+
+      if (!event) {
+        throw new Error("Event not found");
+      }
+
+      const attendees = event.attendees || [];
+      
+      // 2. Find the attendee corresponding to the current user
+      const userEmail = ctx.session.user.email;
+      let userAttendee = attendees.find((a: any) => a.self);
+      
+      if (!userAttendee && userEmail) {
+        userAttendee = attendees.find(
+          (a: any) => a.email?.toLowerCase() === userEmail.toLowerCase()
+        );
+      }
+
+      if (!userAttendee && input.calendarId.includes("@")) {
+        userAttendee = attendees.find(
+          (a: any) => a.email?.toLowerCase() === input.calendarId.toLowerCase()
+        );
+      }
+
+      if (userAttendee) {
+        userAttendee.responseStatus = input.responseStatus;
+      } else if (userEmail) {
+        attendees.push({
+          email: userEmail,
+          responseStatus: input.responseStatus,
+        });
+      }
+
+      // 3. Save the updated attendees list back to the event, passing all existing event details to prevent loss and satisfy Google API constraints
+      const patch: any = { attendees };
+      if (event.summary !== undefined) patch.summary = event.summary;
+      if (event.description !== undefined) patch.description = event.description;
+      if (event.location !== undefined) patch.location = event.location;
+      if (event.start !== undefined) patch.start = event.start;
+      if (event.end !== undefined) patch.end = event.end;
+      if (event.recurrence !== undefined) patch.recurrence = event.recurrence;
+      if (event.status !== undefined) patch.status = event.status;
+      if (event.reminders !== undefined) patch.reminders = event.reminders;
+      if (event.colorId !== undefined) patch.colorId = event.colorId;
+      if (event.transparency !== undefined) patch.transparency = event.transparency;
+      if (event.visibility !== undefined) patch.visibility = event.visibility;
+      if (event.eventType !== undefined) patch.eventType = event.eventType;
+      if (event.guestsCanModify !== undefined) patch.guestsCanModify = event.guestsCanModify;
+      if (event.guestsCanInviteOthers !== undefined) patch.guestsCanInviteOthers = event.guestsCanInviteOthers;
+      if (event.guestsCanSeeOtherGuests !== undefined) patch.guestsCanSeeOtherGuests = event.guestsCanSeeOtherGuests;
+      if (event.anyoneCanAddSelf !== undefined) patch.anyoneCanAddSelf = event.anyoneCanAddSelf;
+
+      await client.googlecalendar.api.events.update({
+        calendarId: input.calendarId,
+        id: input.eventId,
+        event: patch,
+      });
+
+      return { success: true };
+    }),
+
   // Delete an event
   deleteEvent: protectedProcedure
     .meta({ openapi: { method: "DELETE", path: getPath("/events/:eventId"), tags: TAGS } })

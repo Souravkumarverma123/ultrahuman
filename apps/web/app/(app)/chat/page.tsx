@@ -1,13 +1,12 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Bot, User, Send, RefreshCw, Calendar, Mail, FileText, CheckCircle2 } from "lucide-react";
+import { Bot, User, Send, RefreshCw, CheckCircle2 } from "lucide-react";
 import { trpc } from "~/trpc/client";
 import { useTenant } from "~/hooks/use-tenant";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Badge } from "~/components/ui/badge";
-import { Card } from "~/components/ui/card";
 import { toast } from "sonner";
 import Link from "next/link";
 
@@ -74,19 +73,46 @@ function parseContentWithLinks(content: string) {
 export default function ChatPage() {
   const { tenantId } = useTenant();
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      content:
-        "Hello! I am your AI Orchestrator. I have full access to your connected Gmail and Google Calendar via Corsair.\n\nYou can ask me to search or draft emails, look up your weekly schedule, or coordinate invites (e.g. 'Schedule a sync with sourav@example.com for tomorrow at 10 AM and send him an email too'). How can I help you today?",
-    },
-  ]);
+  
+  const welcomeMessage: Message = {
+    id: "welcome",
+    role: "assistant",
+    content:
+      "Hello! I am your AI Orchestrator. I have full access to your connected Gmail and Google Calendar via Corsair.\n\nYou can ask me to search or draft emails, look up your weekly schedule, or coordinate invites (e.g. 'Schedule a sync with sourav@example.com for tomorrow at 10 AM and send him an email too'). How can I help you today?",
+  };
+
+  const [messages, setMessages] = useState<Message[]>([welcomeMessage]);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // tRPC Mutation for AI Agent Chat
+  // tRPC Queries and Mutations
+  const getHistoryQuery = trpc.agent.getHistory.useQuery(
+    { tenantId },
+    { refetchOnWindowFocus: false }
+  );
+
   const agentChatMutation = trpc.agent.chat.useMutation();
+
+  const clearHistoryMutation = trpc.agent.clearHistory.useMutation({
+    onSuccess: () => {
+      setMessages([welcomeMessage]);
+      toast.success("Chat history cleared.");
+    },
+    onError: () => {
+      toast.error("Failed to clear chat history.");
+    },
+  });
+
+  // Load history into messages state once fetched
+  useEffect(() => {
+    if (getHistoryQuery.data?.messages) {
+      if (getHistoryQuery.data.messages.length > 0) {
+        setMessages(getHistoryQuery.data.messages);
+      } else {
+        setMessages([welcomeMessage]);
+      }
+    }
+  }, [getHistoryQuery.data]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -108,16 +134,10 @@ export default function ChatPage() {
 
     setMessages((prev) => [...prev, userMessage]);
 
-    // Format message history for tRPC schema
-    const messageHistory = messages.concat(userMessage).map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
-
     try {
       const response = await agentChatMutation.mutateAsync({
         tenantId,
-        messages: messageHistory,
+        message: messageText,
       });
 
       if (response.success) {
@@ -154,24 +174,6 @@ export default function ChatPage() {
     }
   };
 
-  const suggestions = [
-    {
-      title: "Summarize Inbox",
-      text: "Look up my inbox and list my top 3 recent emails",
-      icon: Mail,
-    },
-    {
-      title: "Schedule Invite + Email",
-      text: "Schedule a sync with team@example.com for tomorrow at 2 PM. Send him an email invite too.",
-      icon: Calendar,
-    },
-    {
-      title: "Search & Draft",
-      text: "Search my emails for 'invoice' and draft a reply to the latest one asking for clarification",
-      icon: FileText,
-    },
-  ];
-
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-muted/5">
       {/* Top Header */}
@@ -188,12 +190,9 @@ export default function ChatPage() {
           variant="outline"
           size="sm"
           onClick={() => {
-            const firstMsg = messages[0];
-            if (firstMsg) {
-              setMessages([firstMsg]);
-            }
-            toast.success("Chat history cleared.");
+            clearHistoryMutation.mutate({ tenantId });
           }}
+          disabled={clearHistoryMutation.isPending || getHistoryQuery.isFetching}
           className="text-xs"
         >
           Clear History
@@ -271,33 +270,9 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* Suggestion & Input Box */}
+      {/* Input Box */}
       <div className="p-6 border-t border-border bg-card shrink-0">
         <div className="max-w-3xl mx-auto space-y-4">
-          {/* Quick Suggestions (Only if chat history is fresh) */}
-          {messages.length === 1 && !agentChatMutation.isPending && (
-            <div className="grid md:grid-cols-3 gap-3">
-              {suggestions.map((s, idx) => {
-                const Icon = s.icon;
-                return (
-                  <Card
-                    key={idx}
-                    onClick={() => handleSend(s.text)}
-                    className="p-3.5 border border-border/80 bg-muted/10 hover:bg-muted/30 cursor-pointer transition-all flex flex-col gap-1.5 rounded-xl shadow-none hover:shadow-sm"
-                  >
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-foreground/80">
-                      <Icon className="h-4 w-4 text-primary" />
-                      {s.title}
-                    </div>
-                    <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
-                      {s.text}
-                    </p>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-
           {/* Chat Form */}
           <form
             onSubmit={(e) => {

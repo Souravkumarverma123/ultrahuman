@@ -4,6 +4,15 @@ import { app as expressApplication } from "./server";
 
 import { env } from "./env";
 
+// Prevent async tool execution or other unhandled errors from crashing the API server
+process.on("unhandledRejection", (reason) => {
+  logger.error("Unhandled Rejection caught:", { reason });
+});
+
+process.on("uncaughtException", (error) => {
+  logger.error("Uncaught Exception caught:", { error });
+});
+
 async function init() {
   try {
     const server = http.createServer(expressApplication);
