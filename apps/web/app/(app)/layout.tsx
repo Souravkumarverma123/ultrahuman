@@ -9,7 +9,6 @@ import {
   Bot,
   Settings as SettingsIcon,
   Keyboard,
-  Sparkles,
   Command as CommandIcon,
   Moon,
   Sun,
@@ -20,6 +19,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "~/components/ui/button";
+import { BrandLogo } from "~/components/brand-logo";
 import { authClient } from "~/lib/auth-client";
 import {
   Dialog,
@@ -163,7 +163,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div
             className={`h-16 px-4 flex items-center ${isCollapsed ? "justify-center" : "gap-2 px-6"} border-b border-border bg-muted/10 transition-all duration-300`}
           >
-            <Sparkles className="h-5 w-5 text-primary flex-shrink-0" />
+            <BrandLogo className="h-8 w-8 rounded-md" />
             {!isCollapsed && (
               <span className="font-normal text-base tracking-tight text-foreground whitespace-nowrap overflow-hidden">
                 Ultrahuman

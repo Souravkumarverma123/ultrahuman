@@ -3,9 +3,10 @@
 import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Sparkles, Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
+import { Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
 import { authClient } from "~/lib/auth-client";
 import { Button } from "~/components/ui/button";
+import { BrandLogo } from "~/components/brand-logo";
 import { toast } from "sonner";
 
 function LoginForm() {
@@ -89,9 +90,7 @@ function LoginForm() {
       {/* Header */}
       <div className="text-center space-y-3">
         <Link href="/" className="inline-flex items-center gap-2 group">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-colors">
-            <Sparkles className="h-5 w-5 text-primary" />
-          </span>
+          <BrandLogo className="h-10 w-10 rounded-xl transition-colors group-hover:border-primary/40" />
           <span className="text-xl font-bold bg-gradient-to-r from-primary to-muted-foreground bg-clip-text text-transparent">
             Ultrahuman
           </span>

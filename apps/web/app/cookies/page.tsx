@@ -6,9 +6,9 @@ import {
   ArrowRight,
   Sun,
   Moon,
-  Sparkles,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
+import { BrandLogo } from "~/components/brand-logo";
 
 const navItems = [
   { label: "Workflow", href: "/#workflow" },
@@ -55,9 +55,7 @@ export default function CookiesPage() {
           aria-label="Main navigation"
         >
           <Link href="/" className="group flex items-center gap-3">
-            <span className="landing-logo-mark" aria-hidden="true">
-              <Sparkles className="h-4 w-4" />
-            </span>
+            <BrandLogo className="h-8 w-8" />
             <span className="text-base font-semibold text-foreground">
               Ultrahuman
             </span>
@@ -246,9 +244,7 @@ export default function CookiesPage() {
             {/* Left Side: Brand and Copyright */}
             <div className="flex flex-col gap-4">
               <Link href="/" className="group flex items-center gap-3">
-                <span className="landing-logo-mark" aria-hidden="true">
-                  <Sparkles className="h-4 w-4" />
-                </span>
+                <BrandLogo className="h-8 w-8" />
                 <span className="text-base font-semibold text-foreground">
                   Ultrahuman
                 </span>
@@ -336,6 +332,11 @@ export default function CookiesPage() {
                   <li>
                     <Link href="/cookies" className="hover:text-foreground transition-colors duration-150">
                       Cookie Policy
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/data-deletion" className="hover:text-foreground transition-colors duration-150">
+                      Data Deletion
                     </Link>
                   </li>
                 </ul>

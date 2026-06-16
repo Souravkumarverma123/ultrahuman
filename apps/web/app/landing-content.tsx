@@ -28,6 +28,7 @@ import {
   Slack,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
+import { BrandLogo } from "~/components/brand-logo";
 import { InfiniteMovingCards } from "~/components/ui/infinite-moving-cards";
 import { TextGenerateEffect } from "~/components/ui/text-generate-effect";
 
@@ -355,9 +356,7 @@ export function LandingContent() {
           aria-label="Main navigation"
         >
           <Link href="/" className="group flex items-center gap-3">
-            <span className="landing-logo-mark" aria-hidden="true">
-              <Sparkles className="h-4 w-4" />
-            </span>
+            <BrandLogo className="h-8 w-8" />
             <span className="text-base font-semibold text-foreground">
               Ultrahuman
             </span>
@@ -888,9 +887,7 @@ export function LandingContent() {
             {/* Left Side: Brand and Copyright */}
             <div className="flex flex-col gap-4">
               <Link href="/" className="group flex items-center gap-3">
-                <span className="landing-logo-mark" aria-hidden="true">
-                  <Sparkles className="h-4 w-4" />
-                </span>
+                <BrandLogo className="h-8 w-8" />
                 <span className="text-base font-semibold text-foreground">
                   Ultrahuman
                 </span>
@@ -978,6 +975,11 @@ export function LandingContent() {
                   <li>
                     <Link href="/cookies" className="hover:text-foreground transition-colors duration-150">
                       Cookie Policy
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/data-deletion" className="hover:text-foreground transition-colors duration-150">
+                      Data Deletion
                     </Link>
                   </li>
                 </ul>
