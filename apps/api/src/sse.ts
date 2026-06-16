@@ -38,6 +38,13 @@ function removeClient(client: SseClient) {
 }
 
 export function subscribeToCorsairEvents(tenantId: string, response: Response) {
+  let clients = clientsByTenant.get(tenantId);
+  if (clients && clients.size >= 10) {
+    logger.warn(`[sse] connection rejected: tenant=${tenantId} exceeds max connections limit`);
+    response.status(429).end("Too many active connections");
+    return () => {};
+  }
+
   response.status(200);
   response.setHeader("Content-Type", "text/event-stream");
   response.setHeader("Cache-Control", "no-cache, no-transform");
@@ -54,7 +61,6 @@ export function subscribeToCorsairEvents(tenantId: string, response: Response) {
     }, 25_000),
   };
 
-  let clients = clientsByTenant.get(tenantId);
   if (!clients) {
     clients = new Set();
     clientsByTenant.set(tenantId, clients);
@@ -110,3 +116,15 @@ export function emitCorsairWebhookEvent(input: {
     }
   }
 }
+
+// Periodically check and clean up sockets that are no longer writeable
+setInterval(() => {
+  for (const [tenantId, clients] of clientsByTenant.entries()) {
+    for (const client of clients) {
+      if (client.response.writableEnded || !client.response.writable) {
+        logger.info(`[sse] cleaning up stale client=${client.id} tenant=${tenantId}`);
+        removeClient(client);
+      }
+    }
+  }
+}, 60_000);

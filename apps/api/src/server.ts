@@ -3,6 +3,7 @@ import { logger } from "@repo/logger";
 import cors from "cors";
 import { processWebhook } from "corsair";
 import { fromNodeHeaders, toNodeHandler } from "better-auth/node";
+import { rateLimit } from "express-rate-limit";
 
 import * as trpcExpress from "@trpc/server/adapters/express";
 import { generateOpenApiDocument, createOpenApiExpressMiddleware } from "trpc-to-openapi";
@@ -167,16 +168,37 @@ function sanitizeCorsairWebhookPayload(plugin: string | null, response: unknown)
   };
 }
 
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 100, // limit each IP to 100 requests per windowMs
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "Too many authentication requests, please try again later." },
+});
+
+const webhookLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  limit: 200,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "Too many webhook requests." },
+});
+
+app.use("/api/auth", authLimiter);
+app.use("/webhooks", webhookLimiter);
+
 app.use(
   cors({
-    origin: env.WEB_URL,
+    origin: [env.WEB_URL],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "x-trpc-source"],
     credentials: true,
   }),
 );
 
 // ─── Better Auth: Mount BEFORE express.json() ──────────────────────────────
 // Better Auth needs raw body access — express.json() must come after
-app.all("/api/auth/{*splat}", toNodeHandler(auth));
+app.all("/api/auth/*", toNodeHandler(auth));
 
 // ─── Corsair: Webhook handler (Gmail & Calendar real-time push) ───────────────
 // Single endpoint — Corsair auto-routes to the correct plugin handler

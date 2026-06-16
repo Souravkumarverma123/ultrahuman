@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Bot, User, Send, RefreshCw, CheckCircle2 } from "lucide-react";
+import { Bot, User, Send, RefreshCw, CheckCircle2, Plus, Globe, CaseSensitive, Mic, ArrowUp } from "lucide-react";
 import { trpc } from "~/trpc/client";
 import { useTenant } from "~/hooks/use-tenant";
 import { Button } from "~/components/ui/button";
@@ -84,6 +84,22 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([welcomeMessage]);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-grow textarea height based on content
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [input]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
 
   // tRPC Queries and Mutations
   const getHistoryQuery = trpc.agent.getHistory.useQuery(
@@ -279,23 +295,32 @@ export default function ChatPage() {
               e.preventDefault();
               handleSend();
             }}
-            className="flex gap-2"
+            className="relative flex items-end w-full rounded-[24px] border border-border bg-muted/40 focus-within:ring-1 focus-within:ring-ring focus-within:bg-muted/60 transition-all p-2 pl-4 pr-2 gap-2"
           >
-            <Input
-              type="text"
-              placeholder="Message AI Assistant..."
+            {/* Textarea */}
+            <textarea
+              ref={textareaRef}
+              rows={1}
+              placeholder="Ask anything"
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
               disabled={agentChatMutation.isPending}
-              className="flex-1 bg-muted/20 border-border/80 text-sm focus-visible:ring-1 focus-visible:ring-ring"
+              className="flex-1 bg-transparent border-0 resize-none outline-none focus:ring-0 focus:outline-none p-0 text-sm text-foreground placeholder:text-muted-foreground/75 min-h-[24px] max-h-[200px] leading-relaxed py-1.5"
             />
-            <Button
+
+            <button
               type="submit"
               disabled={agentChatMutation.isPending || !input.trim()}
-              className="shadow-sm"
+              className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 transition-all duration-200 mb-0.5 ${
+                input.trim()
+                  ? "bg-primary text-primary-foreground hover:scale-105 active:scale-95 hover:bg-primary/90 shadow-sm cursor-pointer"
+                  : "bg-muted/60 text-muted-foreground/30 cursor-not-allowed"
+              }`}
+              aria-label="Send message"
             >
-              <Send className="h-4 w-4" />
-            </Button>
+              <ArrowUp className="h-4.5 w-4.5 stroke-[2.5]" />
+            </button>
           </form>
         </div>
       </div>

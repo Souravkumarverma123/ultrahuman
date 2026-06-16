@@ -22,6 +22,16 @@ export const corsair = createCorsair({
 export type CorsairInstance = typeof corsair;
 
 export { generateOAuthUrl, processOAuthCallback } from "corsair/oauth";
+export * from "./factories";
+
+export async function closeCorsairPool() {
+  try {
+    await pool.end();
+    console.log("Corsair database connection pool closed successfully.");
+  } catch (err) {
+    console.error("Failed to close Corsair connection pool:", err);
+  }
+}
 
 // Automatically setup Corsair integrations with credentials from environment variables
 const googleClientId = process.env.GOOGLE_OAUTH_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;

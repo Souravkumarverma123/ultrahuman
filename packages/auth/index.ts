@@ -2,6 +2,7 @@ import "dotenv/config";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "@repo/database";
+import { logger } from "@repo/logger";
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -15,23 +16,13 @@ export const auth = betterAuth({
     sendOnSignUp: true,
     sendVerificationEmail: async ({ user, url }: { user: { email: string; name: string }; url: string }) => {
       const resendApiKey = process.env.RESEND_API_KEY;
-      const fs = require("fs");
-      const path = require("path");
-      const logPath = path.join(__dirname, "debug.log");
-      
-      const log = (msg: string) => {
-        console.log(msg);
-        try {
-          fs.appendFileSync(logPath, `${new Date().toISOString()} - ${msg}\n`);
-        } catch (e) {}
-      };
 
-      log(`[Better Auth Debug] sendVerificationEmail triggered for ${user.email}`);
-      log(`[Better Auth Debug] RESEND_API_KEY loaded: ${resendApiKey ? `Yes (length: ${resendApiKey.length}, prefix: ${resendApiKey.substring(0, 5)}...)` : 'No'}`);
+      logger.info(`[Better Auth] sendVerificationEmail triggered for ${user.email}`);
+      logger.info(`[Better Auth] RESEND_API_KEY loaded: ${resendApiKey ? `Yes (length: ${resendApiKey.length}, prefix: ${resendApiKey.substring(0, 5)}...)` : 'No'}`);
       
       if (resendApiKey) {
         try {
-          log(`[Better Auth Debug] Sending API request to Resend...`);
+          logger.info(`[Better Auth] Sending API request to Resend...`);
           const res = await fetch("https://api.resend.com/emails", {
             method: "POST",
             headers: {
@@ -47,14 +38,14 @@ export const auth = betterAuth({
           });
           const resData = await res.text();
           if (!res.ok) {
-            log(`[Better Auth Debug] Resend API error status: ${res.status}`);
-            log(`[Better Auth Debug] Resend API response: ${resData}`);
+            logger.error(`[Better Auth] Resend API error status: ${res.status}`);
+            logger.error(`[Better Auth] Resend API response: ${resData}`);
           } else {
-            log(`[Better Auth Debug] Verification email successfully sent to ${user.email} via Resend. Response: ${resData}`);
+            logger.info(`[Better Auth] Verification email successfully sent to ${user.email} via Resend. Response: ${resData}`);
           }
           return;
         } catch (error: any) {
-          log(`[Better Auth Debug] Exception occurred sending via Resend: ${error.message || error}`);
+          logger.error(`[Better Auth] Exception occurred sending via Resend: ${error.message || error}`);
         }
       }
 

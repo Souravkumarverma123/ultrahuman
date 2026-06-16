@@ -54,6 +54,9 @@ importers:
       express:
         specifier: ^5.2.1
         version: 5.2.1
+      express-rate-limit:
+        specifier: ^8.5.2
+        version: 8.5.2(express@5.2.1)
       trpc-to-openapi:
         specifier: ^3.1.0
         version: 3.1.0(@trpc/server@11.8.1(typescript@5.9.3))(zod-openapi@5.4.5(zod@4.3.5))(zod@4.3.5)
@@ -296,6 +299,9 @@ importers:
       '@repo/database':
         specifier: workspace:*
         version: link:../database
+      '@repo/logger':
+        specifier: workspace:*
+        version: link:../logger
       better-auth:
         specifier: ^1.2.8
         version: 1.6.18(drizzle-kit@0.31.8)(drizzle-orm@0.45.2(@types/pg@8.16.0)(kysely@0.28.17)(pg@8.16.3))(next@16.1.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(pg@8.16.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)

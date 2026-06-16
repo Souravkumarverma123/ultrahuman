@@ -1,6 +1,6 @@
 import { z } from "../../schema";
 import { corsair, generateOAuthUrl } from "@repo/services/corsair";
-import { protectedProcedure, router } from "../../trpc";
+import { protectedProcedure, router, tenantProcedure } from "../../trpc";
 import { generatePath } from "../../utils/path-generator";
 import type {} from "express-serve-static-core";
 
@@ -203,7 +203,7 @@ async function fetchAndParseThreads(client: any, rawThreads: any[]): Promise<any
 
 export const gmailRouter = router({
   // Get the OAuth connect URL for Gmail
-  getAuthUrl: protectedProcedure
+  getAuthUrl: tenantProcedure
     .meta({ openapi: { method: "GET", path: getPath("/auth-url"), tags: TAGS } })
     .input(z.object({ tenantId: z.string() }))
     .output(z.object({ url: z.string() }))
@@ -219,7 +219,7 @@ export const gmailRouter = router({
     }),
 
   // Check if Gmail is connected for a tenant
-  getConnectionStatus: protectedProcedure
+  getConnectionStatus: tenantProcedure
     .meta({ openapi: { method: "GET", path: getPath("/connection-status"), tags: TAGS } })
     .input(z.object({ tenantId: z.string() }))
     .output(z.object({ connected: z.boolean(), email: z.string().optional() }))
@@ -234,7 +234,7 @@ export const gmailRouter = router({
     }),
 
   // List email threads
-  listThreads: protectedProcedure
+  listThreads: tenantProcedure
     .meta({ openapi: { method: "GET", path: getPath("/threads"), tags: TAGS } })
     .input(
       z.object({
@@ -269,7 +269,7 @@ export const gmailRouter = router({
     }),
 
   // Get a single full thread with all messages
-  getThread: protectedProcedure
+  getThread: tenantProcedure
     .meta({ openapi: { method: "GET", path: getPath("/threads/:threadId"), tags: TAGS } })
     .input(z.object({ tenantId: z.string(), threadId: z.string() }))
     .output(threadSchema)
@@ -298,7 +298,7 @@ export const gmailRouter = router({
     }),
 
   // Advanced Gmail search
-  searchEmails: protectedProcedure
+  searchEmails: tenantProcedure
     .meta({ openapi: { method: "GET", path: getPath("/search"), tags: TAGS } })
     .input(
       z.object({
@@ -321,7 +321,7 @@ export const gmailRouter = router({
     }),
 
   // Send a new email
-  sendEmail: protectedProcedure
+  sendEmail: tenantProcedure
     .meta({ openapi: { method: "POST", path: getPath("/send"), tags: TAGS } })
     .input(
       z.object({
@@ -368,7 +368,7 @@ export const gmailRouter = router({
     }),
 
   // Create a draft
-  createDraft: protectedProcedure
+  createDraft: tenantProcedure
     .meta({ openapi: { method: "POST", path: getPath("/drafts"), tags: TAGS } })
     .input(
       z.object({
@@ -398,7 +398,7 @@ export const gmailRouter = router({
     }),
 
   // Archive a thread (remove from INBOX)
-  archiveThread: protectedProcedure
+  archiveThread: tenantProcedure
     .meta({ openapi: { method: "POST", path: getPath("/threads/:threadId/archive"), tags: TAGS } })
     .input(z.object({ tenantId: z.string(), threadId: z.string() }))
     .output(z.object({ success: z.boolean() }))
@@ -412,7 +412,7 @@ export const gmailRouter = router({
     }),
 
   // Mark a thread as read
-  markAsRead: protectedProcedure
+  markAsRead: tenantProcedure
     .meta({ openapi: { method: "POST", path: getPath("/threads/:threadId/read"), tags: TAGS } })
     .input(z.object({ tenantId: z.string(), threadId: z.string() }))
     .output(z.object({ success: z.boolean() }))
@@ -426,7 +426,7 @@ export const gmailRouter = router({
     }),
 
   // Star / unstar a thread
-  starThread: protectedProcedure
+  starThread: tenantProcedure
     .meta({ openapi: { method: "POST", path: getPath("/threads/:threadId/star"), tags: TAGS } })
     .input(
       z.object({
@@ -447,7 +447,7 @@ export const gmailRouter = router({
     }),
 
   // Trash a thread
-  trashThread: protectedProcedure
+  trashThread: tenantProcedure
     .meta({ openapi: { method: "POST", path: getPath("/threads/:threadId/trash"), tags: TAGS } })
     .input(z.object({ tenantId: z.string(), threadId: z.string() }))
     .output(z.object({ success: z.boolean() }))

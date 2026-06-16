@@ -22,15 +22,16 @@
   },
   "dependencies": {
     "@repo/auth": "workspace:*",
-    "@repo/trpc": "workspace:*",
     "@repo/logger": "workspace:*",
     "@repo/services": "workspace:*",
+    "@repo/trpc": "workspace:*",
     "@scalar/express-api-reference": "^0.8.30",
     "@trpc/server": "^11.8.1",
     "better-auth": "^1.2.8",
-    "corsair": "^0.1.76",
     "cors": "^2.8.5",
+    "corsair": "^0.1.76",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.5.2",
     "trpc-to-openapi": "^3.1.0",
     "zod": "^4.3.5"
   }

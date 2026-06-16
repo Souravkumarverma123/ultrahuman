@@ -1,6 +1,6 @@
 import { z } from "../../schema";
 import { corsair, generateOAuthUrl } from "@repo/services/corsair";
-import { protectedProcedure, router } from "../../trpc";
+import { protectedProcedure, router, tenantProcedure } from "../../trpc";
 import { generatePath } from "../../utils/path-generator";
 
 const TAGS = ["Calendar"];
@@ -37,7 +37,7 @@ const calendarEventSchema = z.object({
 
 export const calendarRouter = router({
   // Get OAuth connect URL for Google Calendar
-  getAuthUrl: protectedProcedure
+  getAuthUrl: tenantProcedure
     .meta({ openapi: { method: "GET", path: getPath("/auth-url"), tags: TAGS } })
     .input(z.object({ tenantId: z.string() }))
     .output(z.object({ url: z.string() }))
@@ -53,7 +53,7 @@ export const calendarRouter = router({
     }),
 
   // Check if Google Calendar is connected
-  getConnectionStatus: protectedProcedure
+  getConnectionStatus: tenantProcedure
     .meta({ openapi: { method: "GET", path: getPath("/connection-status"), tags: TAGS } })
     .input(z.object({ tenantId: z.string() }))
     .output(z.object({ connected: z.boolean(), email: z.string().optional() }))
@@ -68,7 +68,7 @@ export const calendarRouter = router({
     }),
 
   // List events in a date range
-  listEvents: protectedProcedure
+  listEvents: tenantProcedure
     .meta({ openapi: { method: "GET", path: getPath("/events"), tags: TAGS } })
     .input(
       z.object({
@@ -116,7 +116,7 @@ export const calendarRouter = router({
     }),
 
   // Get a single event
-  getEvent: protectedProcedure
+  getEvent: tenantProcedure
     .meta({ openapi: { method: "GET", path: getPath("/events/:eventId"), tags: TAGS } })
     .input(
       z.object({
@@ -151,7 +151,7 @@ export const calendarRouter = router({
     }),
 
   // Create a calendar event
-  createEvent: protectedProcedure
+  createEvent: tenantProcedure
     .meta({ openapi: { method: "POST", path: getPath("/events"), tags: TAGS } })
     .input(
       z.object({
@@ -199,7 +199,7 @@ export const calendarRouter = router({
     }),
 
   // Create event AND send an email invite to attendees
-  createInvite: protectedProcedure
+  createInvite: tenantProcedure
     .meta({ openapi: { method: "POST", path: getPath("/invite"), tags: TAGS } })
     .input(
       z.object({
@@ -268,7 +268,7 @@ export const calendarRouter = router({
     }),
 
   // Update an event
-  updateEvent: protectedProcedure
+  updateEvent: tenantProcedure
     .meta({ openapi: { method: "PUT", path: getPath("/events/:eventId"), tags: TAGS } })
     .input(
       z.object({
@@ -308,7 +308,7 @@ export const calendarRouter = router({
     }),
 
   // Update RSVP status for the current user
-  updateRSVP: protectedProcedure
+  updateRSVP: tenantProcedure
     .meta({ openapi: { method: "POST", path: getPath("/events/:eventId/rsvp"), tags: TAGS } })
     .input(
       z.object({
@@ -388,7 +388,7 @@ export const calendarRouter = router({
     }),
 
   // Delete an event
-  deleteEvent: protectedProcedure
+  deleteEvent: tenantProcedure
     .meta({ openapi: { method: "DELETE", path: getPath("/events/:eventId"), tags: TAGS } })
     .input(
       z.object({
