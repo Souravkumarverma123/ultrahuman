@@ -1063,11 +1063,6 @@ export function LandingContent() {
                       Login
                     </Link>
                   </li>
-                  <li>
-                    <Link href="/forgot-password" className="hover:text-foreground transition-colors duration-150">
-                      Forgot Password
-                    </Link>
-                  </li>
                 </ul>
               </div>
             </div>

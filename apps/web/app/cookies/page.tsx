@@ -293,22 +293,22 @@ export default function CookiesPage() {
                 <h4 className="text-xs font-semibold text-foreground tracking-wider uppercase opacity-80">Socials</h4>
                 <ul className="flex flex-col gap-2.5 text-xs text-muted-foreground">
                   <li>
-                    <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors duration-150">
+                    <a href="https://x.com/SouravKuma74938" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors duration-150">
                       Twitter
                     </a>
                   </li>
                   <li>
-                    <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors duration-150">
+                    <a href="https://github.com/Souravkumarverma123" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors duration-150">
                       GitHub
                     </a>
                   </li>
                   <li>
-                    <a href="https://slack.com" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors duration-150">
-                      Slack
+                    <a href="https://www.instagram.com/sourav7534kumar/" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors duration-150">
+                      Instagram
                     </a>
                   </li>
                   <li>
-                    <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors duration-150">
+                    <a href="https://www.linkedin.com/in/sourav-kumar-0a3103307/" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors duration-150">
                       LinkedIn
                     </a>
                   </li>
@@ -354,11 +354,6 @@ export default function CookiesPage() {
                   <li>
                     <Link href="/login" className="hover:text-foreground transition-colors duration-150">
                       Login
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/forgot-password" className="hover:text-foreground transition-colors duration-150">
-                      Forgot Password
                     </Link>
                   </li>
                 </ul>
