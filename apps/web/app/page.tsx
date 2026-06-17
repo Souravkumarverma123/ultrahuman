@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import { LandingContent } from "./landing-content";
 
 export const metadata: Metadata = {
-  title: "Ultrahuman | AI Email and Calendar Workspace",
+  title: "AI Email Assistant for Gmail & Google Calendar | Ultrahuman",
   description:
-    "Ultrahuman is a Corsair-powered command center for Gmail, Google Calendar, and agent workflows across email, search, invites, and scheduling.",
+    "Automate Gmail and Google Calendar with AI. Draft emails, schedule meetings, create Google Meet links, manage invitations, and streamline daily workflows from a single AI-powered workspace.",
   openGraph: {
-    title: "Ultrahuman | AI Email and Calendar Workspace",
+    title: "AI Email Assistant for Gmail & Google Calendar | Ultrahuman",
     description:
-      "A Corsair-powered command center for Gmail, Google Calendar, and agent workflows Google never made obvious.",
+      "Automate email, scheduling, and calendar workflows with AI. Connect Gmail and Google Calendar to draft emails, create events, send invites, and manage work faster.",
     type: "website",
   },
 };

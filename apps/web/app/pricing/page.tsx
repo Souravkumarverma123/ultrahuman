@@ -12,6 +12,7 @@ import {
   Moon,
   Star,
   Loader2,
+  Menu,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { BrandLogo } from "~/components/brand-logo";
@@ -29,6 +30,7 @@ export default function PricingPage() {
   const [isAnnual, setIsAnnual] = useState(false);
   const [loadingCheckout, setLoadingCheckout] = useState(false);
   const [isDark, setIsDark] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // tRPC mutations and queries
   const createCheckoutOrder = trpc.payment.createCheckoutOrder.useMutation();
@@ -90,7 +92,7 @@ export default function PricingPage() {
             <Link href="/#faq" className="text-muted-foreground hover:text-foreground transition-colors">FAQ</Link>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <Button
               onClick={toggleTheme}
               variant="outline"
@@ -102,24 +104,72 @@ export default function PricingPage() {
             </Button>
 
             {session ? (
-              <Button asChild className="button-primary h-10 px-5">
+              <Button asChild className="button-primary h-10 px-5 hidden sm:inline-flex">
                 <Link href="/inbox">
                   Dashboard
                   <ArrowRight className="h-4 w-4 ml-1.5" />
                 </Link>
               </Button>
             ) : (
-              <>
+              <div className="hidden sm:flex items-center gap-2">
                 <Button asChild variant="ghost" className="h-10 px-4">
                   <Link href="/login">Login</Link>
                 </Button>
                 <Button asChild className="button-primary h-10 px-5">
                   <Link href="/signup">Sign Up</Link>
                 </Button>
-              </>
+              </div>
             )}
+
+            {/* Mobile Menu Button */}
+            <Button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              variant="outline"
+              size="icon"
+              className="h-10 w-10 border-border md:hidden"
+              aria-expanded={mobileMenuOpen}
+              aria-label="Toggle navigation menu"
+            >
+              {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            </Button>
           </div>
         </div>
+
+        {/* Mobile Navigation Drawer */}
+        {mobileMenuOpen && (
+          <div className="border-t border-border bg-background/95 backdrop-blur-lg md:hidden animate-in slide-in-from-top-4 duration-200">
+            <div className="flex flex-col gap-4 px-6 py-6 font-sans">
+              <Link href="/#workflow" onClick={() => setMobileMenuOpen(false)} className="text-base font-semibold text-muted-foreground hover:text-foreground transition-colors py-1.5">Workflow</Link>
+              <Link href="/#search" onClick={() => setMobileMenuOpen(false)} className="text-base font-semibold text-muted-foreground hover:text-foreground transition-colors py-1.5">Search</Link>
+              <Link href="/#agent" onClick={() => setMobileMenuOpen(false)} className="text-base font-semibold text-muted-foreground hover:text-foreground transition-colors py-1.5">Agent</Link>
+              <Link href="/pricing" onClick={() => setMobileMenuOpen(false)} className="text-base font-semibold text-foreground py-1.5">Pricing</Link>
+              <Link href="/#faq" onClick={() => setMobileMenuOpen(false)} className="text-base font-semibold text-muted-foreground hover:text-foreground transition-colors py-1.5">FAQ</Link>
+              
+              <div className="border-t border-border pt-4 mt-2 flex items-center justify-between gap-4">
+                {session ? (
+                  <>
+                    <span className="text-sm font-medium text-muted-foreground">Quick Action</span>
+                    <Button asChild className="button-primary h-10 px-5" onClick={() => setMobileMenuOpen(false)}>
+                      <Link href="/inbox">
+                        Dashboard
+                        <ArrowRight className="h-4 w-4 ml-1.5" />
+                      </Link>
+                    </Button>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2 w-full justify-between">
+                    <Button asChild variant="ghost" className="h-10 px-4 flex-1 text-center" onClick={() => setMobileMenuOpen(false)}>
+                      <Link href="/login">Login</Link>
+                    </Button>
+                    <Button asChild className="button-primary h-10 px-5 flex-1 text-center" onClick={() => setMobileMenuOpen(false)}>
+                      <Link href="/signup">Sign Up</Link>
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Main Pricing Sections */}
@@ -287,8 +337,8 @@ export default function PricingPage() {
             <p className="text-sm text-muted-foreground mt-1">Detailed breakdown of start and upgraded capabilities.</p>
           </div>
 
-          <div className="border border-border rounded-xl bg-card overflow-hidden">
-            <Table>
+          <div className="border border-border rounded-xl bg-card overflow-x-auto">
+            <Table className="min-w-[600px] md:min-w-full">
               <TableHeader>
                 <TableRow className="bg-muted/30">
                   <TableHead className="w-[40%] font-semibold">Capability</TableHead>

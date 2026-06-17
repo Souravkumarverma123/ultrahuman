@@ -22,6 +22,8 @@ import {
   Sun,
   Github,
   Slack,
+  Menu,
+  X,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { BrandLogo } from "~/components/brand-logo";
@@ -189,7 +191,7 @@ function ProductMockup() {
 
   return (
     <div
-      className="relative overflow-hidden bg-card/70 backdrop-blur-xl border border-border/80 rounded-2xl shadow-2xl p-6 md:p-8"
+      className="relative overflow-hidden bg-card/70 backdrop-blur-xl border border-border/80 rounded-2xl shadow-2xl p-4 sm:p-6 md:p-8"
       role="img"
       aria-label="Ultrahuman product mockup with inbox, calendar, command palette, and agent tool calls"
     >
@@ -327,6 +329,7 @@ function ProductMockup() {
 
 export function LandingContent() {
   const [isDark, setIsDark] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Sync with browser theme preference on mount
   useEffect(() => {
@@ -367,7 +370,7 @@ export function LandingContent() {
             ))}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {/* Theme Toggle Button */}
             <Button
               onClick={toggleTheme}
@@ -383,14 +386,57 @@ export function LandingContent() {
               )}
             </Button>
 
-            <Button asChild className="button-primary h-10 px-5">
+            <Button asChild className="button-primary h-10 px-5 hidden sm:inline-flex">
               <Link href="/inbox">
                 Open app
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
             </Button>
+
+            {/* Mobile Menu Button */}
+            <Button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              variant="outline"
+              size="icon"
+              className="button-secondary h-10 w-10 flex items-center justify-center border-border md:hidden"
+              aria-expanded={mobileMenuOpen}
+              aria-label="Toggle navigation menu"
+            >
+              {mobileMenuOpen ? (
+                <X className="h-[18px] w-[18px] text-foreground" />
+              ) : (
+                <Menu className="h-[18px] w-[18px] text-foreground" />
+              )}
+            </Button>
           </div>
         </nav>
+
+        {/* Mobile Navigation Drawer */}
+        {mobileMenuOpen && (
+          <div className="border-t border-border bg-background/95 backdrop-blur-lg md:hidden animate-in slide-in-from-top-4 duration-200">
+            <div className="flex flex-col gap-4 px-6 py-6 font-sans">
+              {navItems.map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-base font-semibold text-muted-foreground hover:text-primary transition-colors py-1.5"
+                >
+                  {item.label}
+                </a>
+              ))}
+              <div className="border-t border-border pt-4 mt-2 flex items-center justify-between gap-4">
+                <span className="text-sm font-medium text-muted-foreground">Quick Action</span>
+                <Button asChild className="button-primary h-10 px-5" onClick={() => setMobileMenuOpen(false)}>
+                  <Link href="/inbox">
+                    Open app
+                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Soft gradient blur background for Sunsama style aesthetic */}
@@ -424,7 +470,7 @@ export function LandingContent() {
 
       {/* Hero Section */}
       <section className="mx-auto max-w-7xl px-6 py-12 md:py-16">
-        <div className="bg-card border border-border rounded-[24px] md:rounded-[32px] p-8 md:p-12 shadow-sm hover:shadow-md transition-shadow duration-300">
+        <div className="bg-card border border-border rounded-[24px] md:rounded-[32px] p-6 sm:p-8 md:p-12 shadow-sm hover:shadow-md transition-shadow duration-300">
           <div className="grid gap-12 lg:grid-cols-[0.95fr_1.05fr] items-center">
             <div className="max-w-xl">
               {/* Integration badge pill */}
@@ -474,7 +520,7 @@ export function LandingContent() {
                 </Button>
               </div>
 
-              <div className="mt-12 grid grid-cols-3 gap-4 border-t border-border pt-8 font-sans">
+              <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-4 border-t border-border pt-8 font-sans">
                 {metrics.map((metric) => (
                   <div key={metric.label}>
                     <div className="text-2xl font-normal text-foreground">
@@ -557,7 +603,29 @@ export function LandingContent() {
       {/* Search Section */}
       <section id="search" className="py-24 bg-transparent">
         <div className="mx-auto w-full max-w-7xl px-6 grid gap-12 lg:grid-cols-2 items-center">
-          <div className="ide-mockup-card p-6 bg-card">
+          <div className="lg:order-2">
+            <span className="badge-pill-tag">Search and mail</span>
+            <h2 className="display-lg mt-6">
+              Gmail advanced search, shaped like a cockpit.
+            </h2>
+            <TextGenerateEffect
+              words="Keep the power of Gmail queries, but surround them with the controls people actually need: priority, thread context, draft actions, and fast keyboard paths."
+              className="mt-4"
+              textClassName="text-base leading-relaxed text-muted-foreground font-normal"
+              duration={0.4}
+            />
+            <div className="mt-6 flex flex-wrap gap-2">
+              {["Search threads", "Draft replies", "Send mail", "Classify priority"].map(
+                (item) => (
+                  <span className="badge-pill-tag" key={item}>
+                    {item}
+                  </span>
+                ),
+              )}
+            </div>
+          </div>
+
+          <div className="ide-mockup-card p-6 bg-card lg:order-1">
             <div className="flex items-center gap-3 bg-muted border border-border rounded-lg px-4 py-2 text-xs text-muted-foreground">
               <Search className="h-4 w-4 text-primary" aria-hidden="true" />
               <span className="font-mono">from:maya has:attachment after:2026/06/01</span>
@@ -583,28 +651,6 @@ export function LandingContent() {
                   <span className={pillClass}>{priority}</span>
                 </div>
               ))}
-            </div>
-          </div>
-
-          <div>
-            <span className="badge-pill-tag">Search and mail</span>
-            <h2 className="display-lg mt-6">
-              Gmail advanced search, shaped like a cockpit.
-            </h2>
-            <TextGenerateEffect
-              words="Keep the power of Gmail queries, but surround them with the controls people actually need: priority, thread context, draft actions, and fast keyboard paths."
-              className="mt-4"
-              textClassName="text-base leading-relaxed text-muted-foreground font-normal"
-              duration={0.4}
-            />
-            <div className="mt-6 flex flex-wrap gap-2">
-              {["Search threads", "Draft replies", "Send mail", "Classify priority"].map(
-                (item) => (
-                  <span className="badge-pill-tag" key={item}>
-                    {item}
-                  </span>
-                ),
-              )}
             </div>
           </div>
         </div>
@@ -664,26 +710,7 @@ export function LandingContent() {
       {/* Agent Section */}
       <section id="agent" className="py-24 bg-transparent">
         <div className="mx-auto w-full max-w-7xl px-6 grid gap-12 lg:grid-cols-2 items-center">
-          <div className="ide-mockup-card p-6 bg-card space-y-4">
-            <div className="p-3 bg-muted border border-border rounded-lg text-xs leading-relaxed text-foreground max-w-[90%] ml-auto">
-              Send a calendar invite to friend@corsair.dev at 9 AM next Thursday. Send him an email too saying I look forward to our meeting.
-            </div>
-            <div className="p-3 bg-muted border border-border rounded-lg text-xs leading-relaxed text-muted-foreground max-w-[90%] border-l-2 border-l-primary">
-              I found the date, created the Google Calendar invite, attached a Meet link, and sent the follow-up email.
-            </div>
-            <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
-              {["calendar.create_invite", "gmail.send_email", "gmail.search"].map(
-                (tool) => (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted border border-border text-[10px] font-semibold text-emerald-600 dark:text-emerald-400" key={tool}>
-                    <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
-                    {tool}
-                  </span>
-                ),
-              )}
-            </div>
-          </div>
-
-          <div>
+          <div className="lg:order-2">
             <span className="badge-pill-tag">Agent</span>
             <h2 className="display-lg mt-6">
               Chat becomes useful when it can touch the tools.
@@ -700,6 +727,25 @@ export function LandingContent() {
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
             </Button>
+          </div>
+
+          <div className="ide-mockup-card p-6 bg-card space-y-4 lg:order-1">
+            <div className="p-3 bg-muted border border-border rounded-lg text-xs leading-relaxed text-foreground max-w-[90%] ml-auto">
+              Send a calendar invite to souravkumarvermadev@gmail.com at 9 AM next Thursday. Send him an email too saying I look forward to our meeting.
+            </div>
+            <div className="p-3 bg-muted border border-border rounded-lg text-xs leading-relaxed text-muted-foreground max-w-[90%] border-l-2 border-l-primary">
+              I found the date, created the Google Calendar invite, attached a Meet link, and sent the follow-up email.
+            </div>
+            <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
+              {["calendar.create_invite", "gmail.send_email", "gmail.search"].map(
+                (tool) => (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted border border-border text-[10px] font-semibold text-emerald-600 dark:text-emerald-400" key={tool}>
+                    <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
+                    {tool}
+                  </span>
+                ),
+              )}
+            </div>
           </div>
         </div>
       </section>

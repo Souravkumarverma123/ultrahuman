@@ -147,3 +147,4 @@ vite.config.ts.timestamp-*
 
 # Next.js build output
 .next
+testsprite_tests/tmp/config.json
