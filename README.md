@@ -133,16 +133,44 @@ See [`.env.example`](.env.example) for a full list with descriptions.
 
 Key variables:
 
-| Variable                     | Required | Default                 |
-| ---------------------------- | -------- | ----------------------- |
-| `DATABASE_URL`               | ✅       | —                       |
-| `GOOGLE_OAUTH_CLIENT_ID`     | ✅       | —                       |
-| `GOOGLE_OAUTH_CLIENT_SECRET` | ✅       | —                       |
-| `GOOGLE_OAUTH_REDIRECT_URI`  | ✅       | —                       |
-| `PORT`                       | ❌       | `8000`                  |
-| `NODE_ENV`                   | ❌       | `development`           |
-| `BASE_URL`                   | ❌       | `http://localhost:8000` |
-| `NEXT_PUBLIC_API_URL`        | ❌       | `/trpc` (proxy)         |
+| Variable                           | Required | Default                 |
+| ---------------------------------- | -------- | ----------------------- |
+| `DATABASE_URL`                     | ✅       | —                       |
+| `GOOGLE_OAUTH_CLIENT_ID`           | ✅       | —                       |
+| `GOOGLE_OAUTH_CLIENT_SECRET`       | ✅       | —                       |
+| `GOOGLE_OAUTH_REDIRECT_URI`        | ✅       | —                       |
+| `PORT`                             | ❌       | `8000`                  |
+| `NODE_ENV`                         | ❌       | `development`           |
+| `BASE_URL`                         | ❌       | `http://localhost:8000` |
+| `NEXT_PUBLIC_API_URL`              | ❌       | `/trpc` (proxy)         |
+| `DODO_PAYMENTS_API_KEY`            | ✅       | —                       |
+| `DODO_PAYMENTS_ENVIRONMENT`        | ❌       | `live_mode` (prod)      |
+| `DODO_PAYMENTS_WEBHOOK_KEY`        | ✅       | —                       |
+| `DODO_PAYMENTS_MONTHLY_PRODUCT_ID` | ✅       | —                       |
+| `DODO_PAYMENTS_ANNUAL_PRODUCT_ID`  | ✅       | —                       |
+
+---
+
+## Dodo Payments Configuration
+
+To handle payments and automatic user promotion to the **Pro** tier:
+
+1. **Dashboard Setup**: 
+   - Go to your Dodo Payments Dashboard and switch to **Live Mode**.
+   - Generate your API Key under **Developer > API Keys** and set it as `DODO_PAYMENTS_API_KEY`.
+   
+2. **Webhook Endpoint Setup**:
+   - Go to **Developer > Webhooks** and click **Add endpoint**.
+   - Set the URL to `https://your-domain.com/webhooks/dodo`.
+   - Under **Subscribed events**, you must select these three events:
+     - `payment.succeeded`
+     - `subscription.active`
+     - `subscription.renewed`
+   - Copy the revealed **Signing Secret** and set it as `DODO_PAYMENTS_WEBHOOK_KEY`.
+
+3. **Product Configuration**:
+   - Create your Monthly and Annual subscription plans in Dodo Payments storefront.
+   - Set the respective product/billing IDs as `DODO_PAYMENTS_MONTHLY_PRODUCT_ID` and `DODO_PAYMENTS_ANNUAL_PRODUCT_ID`.
 
 ---
 
