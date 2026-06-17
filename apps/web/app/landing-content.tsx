@@ -502,7 +502,7 @@ export function LandingContent() {
                   Gmail & Calendar
                 </span>{" "}
                 <br className="hidden lg:inline" />
-                with AI
+                with AI and Agents
               </h1>
 
               <TextGenerateEffect
@@ -710,7 +710,7 @@ export function LandingContent() {
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <div className="p-3 bg-muted border border-border rounded-lg flex items-center gap-2.5 text-xs text-foreground">
                 <CalendarClock className="h-4 w-4 text-primary" aria-hidden="true" />
-                <span>Product sync with friend@corsair.dev</span>
+                <span>Product sync with support@Ultrahuman.co.in</span>
               </div>
               <div className="p-3 bg-muted border border-border rounded-lg flex items-center gap-2.5 text-xs text-foreground">
                 <Mail className="h-4 w-4 text-[#c08532]" aria-hidden="true" />
@@ -841,12 +841,12 @@ export function LandingContent() {
       {/* Testimonials Section */}
       <section className="py-24 bg-transparent overflow-hidden">
         <div className="mx-auto w-full max-w-7xl px-6 mb-12 text-center">
-          <span className="badge-pill-tag">WALL OF LOVE</span>
+          <span className="badge-pill-tag">BETA TESTERS WALL</span>
           <h2 className="display-lg mt-6">
-            Loved by high-performance teams.
+            Tested by early adopters.
           </h2>
           <p className="mt-4 text-base text-muted-foreground max-w-2xl mx-auto">
-            See how founders, builders, and operators use Ultrahuman to reclaim hours of their day from email clutter.
+            See how our early beta testers use Ultrahuman to manage their day, automate emails, and schedule invites.
           </p>
         </div>
         
@@ -1085,23 +1085,23 @@ export function LandingContent() {
 
 const testimonials = [
   {
-    quote: "With Ultrahuman, I cleared 400 backlogged emails and coordinated three client projects in under an hour. The keyboard layout and instant SSE updates make it feel like an extension of my thoughts.",
-    name: "Sarah Jenkins",
-    title: "Operations Lead at Vanta",
+    quote: "As a beta tester, I've been using Ultrahuman to manage my daily scheduling. Having AI handle calendar event conflicts and email drafting right from one screen is a massive time-saver.",
+    name: "Surya",
+    title: "Beta Tester & Developer",
   },
   {
-    quote: "No polling lag, no bloated Gmail sidebars. The agent scheduling calendar events directly in the background is the closest thing to having a chief of staff.",
-    name: "David Chen",
-    title: "Founder, ByteScale",
+    quote: "The speed of the Command-K search and how fast the mail sync works is incredible. It makes scheduling Google Meet links and sending calendar invites feel completely frictionless.",
+    name: "Pranjal",
+    title: "Beta Tester & Student",
   },
   {
-    quote: "The interface is gorgeous, minimal, and incredibly responsive. The real-time webhook-driven push sync is game-changing—I see calendar invites the instant they are sent.",
-    name: "Elena Rostova",
-    title: "Product Designer, Linear",
+    quote: "I've been testing the background AI agent actions. Letting the AI plan my day and write draft replies automatically without having a clunky interface is exactly what I needed.",
+    name: "Aadarsh",
+    title: "Beta Tester & Tech Enthusiast",
   },
   {
-    quote: "Finally, a productivity app that doesn't treat the keyboard as an afterthought. Command-K, search, compose, and send in single-digit milliseconds.",
-    name: "Marcus Aurelius",
-    title: "Software Architect",
+    quote: "The interface is extremely slick, and the responsiveness on mobile is great. It has completely replaced my default calendar app during the beta trial.",
+    name: "Rachit",
+    title: "Beta Tester & Product Designer",
   },
 ];
