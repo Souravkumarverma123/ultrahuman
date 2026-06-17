@@ -191,7 +191,7 @@ function ProductMockup() {
 
   return (
     <div
-      className="relative overflow-hidden bg-card/70 backdrop-blur-xl border border-border/80 rounded-2xl shadow-2xl p-4 sm:p-6 md:p-8"
+      className="relative w-full max-w-full overflow-hidden bg-card/70 backdrop-blur-xl border border-border/80 rounded-2xl shadow-2xl p-3.5 sm:p-6 md:p-8"
       role="img"
       aria-label="Ultrahuman product mockup with inbox, calendar, command palette, and agent tool calls"
     >
@@ -201,20 +201,20 @@ function ProductMockup() {
 
       {/* Title Bar */}
       <div className="flex items-center justify-between pb-4 mb-4 border-b border-border/60">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           <span className="w-3 h-3 rounded-full bg-[#ff5f56]/80 border border-[#e0443e]/40 shadow-sm" />
           <span className="w-3 h-3 rounded-full bg-[#ffbd2e]/80 border border-[#df9d1e]/40 shadow-sm" />
           <span className="w-3 h-3 rounded-full bg-[#27c93f]/80 border border-[#1aab29]/40 shadow-sm" />
         </div>
         
         {/* Raycast/Spotlight Style Search Bar */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/80 border border-border/80 text-xs text-foreground font-sans w-2/3 max-w-[280px] shadow-inner">
-          <Search className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
-          <span className="truncate text-muted-foreground flex-1 font-medium flex items-center gap-0.5">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/80 border border-border/80 text-xs text-foreground font-sans w-full max-w-[220px] sm:max-w-[280px] shadow-inner min-w-0">
+          <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+          <span className="truncate text-muted-foreground flex-1 font-medium flex items-center gap-0.5 min-w-0">
             Schedule invite and send follow-up
             <span className="inline-block w-[1.5px] h-3 bg-primary/70 animate-pulse ml-0.5" />
           </span>
-          <span className="text-[9px] font-semibold text-muted-foreground/80 bg-background border border-border px-1.5 py-0.5 rounded shadow-sm font-sans tracking-wide">
+          <span className="text-[9px] font-semibold text-muted-foreground/80 bg-background border border-border px-1.5 py-0.5 rounded shadow-sm font-sans tracking-wide shrink-0">
             ⌘K
           </span>
         </div>
@@ -297,32 +297,34 @@ function ProductMockup() {
       </div>
 
       {/* Execution/Agent logs pane at bottom */}
-      <div className="mt-6 p-4 bg-muted/60 border border-border/80 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-foreground">
-            <div className="p-1 rounded bg-primary/10 border border-primary/20">
+      <div className="mt-6 p-3 sm:p-4 bg-muted/60 border border-border/80 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4 min-w-0 w-full">
+        <div className="space-y-1.5 min-w-0 w-full md:w-auto">
+          <div className="flex items-center gap-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-foreground">
+            <div className="p-1 rounded bg-primary/10 border border-primary/20 shrink-0">
               <Sparkles className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
             </div>
-            <span>Agent Plan Executed</span>
-            <span className="relative flex h-2 w-2 ml-1">
+            <span className="truncate">Agent Plan Executed</span>
+            <span className="relative flex h-2 w-2 ml-1 shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
           </div>
-          <div className="flex items-center gap-3 text-[11px] font-mono text-muted-foreground flex-wrap">
-            <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-              <CheckCircle2 className="h-3 w-3" /> calendar.create_invite
+          <div className="flex items-center gap-2 sm:gap-3 text-[10px] sm:text-[11px] font-mono text-muted-foreground flex-wrap min-w-0">
+            <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 min-w-0">
+              <CheckCircle2 className="h-3 w-3 shrink-0" />
+              <span className="truncate">calendar.create_invite</span>
             </span>
-            <span className="text-border">→</span>
-            <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
-              <CheckCircle2 className="h-3 w-3" /> gmail.send_email
+            <span className="text-border font-sans">→</span>
+            <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold min-w-0">
+              <CheckCircle2 className="h-3 w-3 shrink-0" />
+              <span className="truncate">gmail.send_email</span>
             </span>
           </div>
         </div>
         <Button
           asChild
           size="sm"
-          className="button-primary h-9 px-4 text-xs font-semibold shadow-sm hover:shadow transition-all duration-200"
+          className="button-primary h-9 px-4 text-xs font-semibold shadow-sm hover:shadow transition-all duration-200 shrink-0 md:w-auto w-full"
         >
           <Link href="/chat">
             Try agent flow
@@ -356,7 +358,7 @@ export function LandingContent() {
   };
 
   return (
-    <div className={`landing-page min-h-screen text-foreground ${isDark ? "dark-landing" : ""}`}>
+    <div className={`landing-page min-h-screen overflow-x-hidden text-foreground ${isDark ? "dark-landing" : ""}`}>
       <header className="landing-header sticky top-0 z-30 w-full bg-background/90 backdrop-blur-md border-b border-border">
         <nav
           className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-6"
@@ -477,8 +479,8 @@ export function LandingContent() {
 
       {/* Hero Section */}
       <section className="mx-auto max-w-7xl px-6 py-12 md:py-16">
-        <div className="bg-card border border-border rounded-[24px] md:rounded-[32px] p-6 sm:p-8 md:p-12 shadow-sm hover:shadow-md transition-shadow duration-300">
-          <div className="grid gap-12 lg:grid-cols-[1.15fr_0.85fr] items-center">
+        <div className="bg-card border border-border rounded-[24px] md:rounded-[32px] p-5 sm:p-8 md:p-12 shadow-sm hover:shadow-md transition-shadow duration-300">
+          <div className="grid gap-8 lg:gap-12 lg:grid-cols-[1.15fr_0.85fr] items-center">
             <div className="max-w-2xl">
               {/* Integration badge pill */}
               <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground font-medium mb-8">
@@ -546,7 +548,7 @@ export function LandingContent() {
               </div>
             </div>
 
-            <div className="relative">
+            <div className="relative min-w-0 w-full">
               {/* Soft mesh ambient glow blob */}
               <div className="absolute -inset-2 bg-gradient-to-tr from-primary/20 via-orange-500/10 to-transparent blur-3xl rounded-[32px] opacity-70 pointer-events-none -z-10" />
               <ProductMockup />
@@ -639,11 +641,11 @@ export function LandingContent() {
             </div>
           </div>
 
-          <div className="ide-mockup-card p-6 bg-card lg:order-1">
-            <div className="flex items-center gap-3 bg-muted border border-border rounded-lg px-4 py-2 text-xs text-muted-foreground">
-              <Search className="h-4 w-4 text-primary" aria-hidden="true" />
-              <span className="font-mono">from:maya has:attachment after:2026/06/01</span>
-              <kbd className="ml-auto rounded bg-border px-1.5 py-0.5 text-[10px] text-foreground">
+          <div className="ide-mockup-card p-4 sm:p-6 bg-card lg:order-1 min-w-0 w-full">
+            <div className="flex items-center gap-2 sm:gap-3 bg-muted border border-border rounded-lg px-3 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-xs text-muted-foreground min-w-0">
+              <Search className="h-4 w-4 text-primary shrink-0" aria-hidden="true" />
+              <span className="font-mono truncate flex-1 min-w-0">from:maya has:attachment after:2026/06/01</span>
+              <kbd className="ml-auto rounded bg-border px-1.5 py-0.5 text-[9px] sm:text-[10px] text-foreground shrink-0">
                 Enter
               </kbd>
             </div>
@@ -686,35 +688,35 @@ export function LandingContent() {
             />
           </div>
 
-          <div className="ide-mockup-card p-6 bg-card">
+          <div className="ide-mockup-card p-4 sm:p-6 bg-card min-w-0 w-full">
             <div className="grid grid-cols-7 gap-2 text-center text-[10px] font-semibold text-muted-foreground uppercase">
               {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
                 <span key={day}>{day}</span>
               ))}
             </div>
-            <div className="mt-3 grid grid-cols-7 gap-2">
+            <div className="mt-3 grid grid-cols-7 gap-1 sm:gap-2">
               {Array.from({ length: 7 }, (_, index) => (
                 <div
-                  className={`p-2 border rounded-lg text-center text-xs flex flex-col justify-between min-h-[60px] ${
+                  className={`p-1 sm:p-2 border rounded-lg text-center text-xs flex flex-col justify-between min-h-[50px] sm:min-h-[60px] ${
                     index === 3
                       ? "border-primary bg-muted"
                       : "border-border bg-muted"
                   }`}
                   key={index}
                 >
-                  <span className="text-[10px] text-muted-foreground font-semibold">{15 + index}</span>
-                  {index === 3 ? <strong className="text-primary text-[10px]">09:00</strong> : null}
+                  <span className="text-[9px] sm:text-[10px] text-muted-foreground font-semibold">{15 + index}</span>
+                  {index === 3 ? <strong className="text-primary text-[9px] sm:text-[10px]">09:00</strong> : null}
                 </div>
               ))}
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <div className="p-3 bg-muted border border-border rounded-lg flex items-center gap-2.5 text-xs text-foreground">
-                <CalendarClock className="h-4 w-4 text-primary" aria-hidden="true" />
-                <span>Product sync with support@Ultrahuman.co.in</span>
+              <div className="p-3 bg-muted border border-border rounded-lg flex items-center gap-2 text-xs text-foreground min-w-0">
+                <CalendarClock className="h-4 w-4 text-primary shrink-0" aria-hidden="true" />
+                <span className="truncate">Product sync with support@Ultrahuman.co.in</span>
               </div>
-              <div className="p-3 bg-muted border border-border rounded-lg flex items-center gap-2.5 text-xs text-foreground">
-                <Mail className="h-4 w-4 text-[#c08532]" aria-hidden="true" />
-                <span>Companion email queued</span>
+              <div className="p-3 bg-muted border border-border rounded-lg flex items-center gap-2 text-xs text-foreground min-w-0">
+                <Mail className="h-4 w-4 text-[#c08532] shrink-0" aria-hidden="true" />
+                <span className="truncate">Companion email queued</span>
               </div>
             </div>
           </div>
@@ -743,19 +745,19 @@ export function LandingContent() {
             </Button>
           </div>
 
-          <div className="ide-mockup-card p-6 bg-card space-y-4 lg:order-1">
+          <div className="ide-mockup-card p-4 sm:p-6 bg-card space-y-4 lg:order-1 min-w-0 w-full">
             <div className="p-3 bg-muted border border-border rounded-lg text-xs leading-relaxed text-foreground max-w-[90%] ml-auto">
               Send a calendar invite to souravkumarvermadev@gmail.com at 9 AM next Thursday. Send him an email too saying I look forward to our meeting.
             </div>
             <div className="p-3 bg-muted border border-border rounded-lg text-xs leading-relaxed text-muted-foreground max-w-[90%] border-l-2 border-l-primary">
               I found the date, created the Google Calendar invite, attached a Meet link, and sent the follow-up email.
             </div>
-            <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
+            <div className="flex flex-wrap gap-1.5 sm:gap-2 pt-2 border-t border-border">
               {["calendar.create_invite", "gmail.send_email", "gmail.search"].map(
                 (tool) => (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted border border-border text-[10px] font-semibold text-emerald-600 dark:text-emerald-400" key={tool}>
-                    <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
-                    {tool}
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted border border-border text-[9px] sm:text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 min-w-0" key={tool}>
+                    <CheckCircle2 className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span className="truncate">{tool}</span>
                   </span>
                 ),
               )}
