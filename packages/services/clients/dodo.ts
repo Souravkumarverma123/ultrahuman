@@ -5,10 +5,23 @@ import { env } from "../env";
 const rawKey = env.DODO_PAYMENTS_API_KEY;
 const cleanKey = rawKey ? rawKey.trim().replace(/^["']|["']$/g, "") : "";
 
+const explicitEnv = env.DODO_PAYMENTS_ENVIRONMENT;
+let targetEnv: "test_mode" | "live_mode";
+
+if (explicitEnv === "test_mode" || explicitEnv === "live_mode") {
+  targetEnv = explicitEnv;
+} else if (cleanKey.startsWith("dp_live_")) {
+  targetEnv = "live_mode";
+} else if (cleanKey.startsWith("dp_test_")) {
+  targetEnv = "test_mode";
+} else {
+  targetEnv = process.env.NODE_ENV === "development" ? "test_mode" : "live_mode";
+}
+
 export const dodo = cleanKey
   ? new DodoPayments({
       bearerToken: cleanKey,
-      environment: cleanKey.startsWith("dp_test_") ? "test_mode" : "live_mode",
+      environment: targetEnv,
     })
   : null;
 
