@@ -5,7 +5,7 @@ import { env } from "../env";
 export const dodo = env.DODO_PAYMENTS_API_KEY
   ? new DodoPayments({
       bearerToken: env.DODO_PAYMENTS_API_KEY,
-      environment: process.env.NODE_ENV === "development" ? "test_mode" : "live_mode",
+      environment: env.DODO_PAYMENTS_API_KEY.startsWith("dp_test_") ? "test_mode" : "live_mode",
     })
   : null;
 
