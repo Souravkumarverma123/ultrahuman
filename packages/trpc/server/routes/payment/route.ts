@@ -27,8 +27,11 @@ export const paymentRouter = router({
       const userName = ctx.session.user.name || "";
       const dodo = getDodoClient();
 
-      const monthlyProductId = process.env.DODO_PAYMENTS_MONTHLY_PRODUCT_ID;
-      const annualProductId = process.env.DODO_PAYMENTS_ANNUAL_PRODUCT_ID;
+      const rawMonthlyId = process.env.DODO_PAYMENTS_MONTHLY_PRODUCT_ID;
+      const rawAnnualId = process.env.DODO_PAYMENTS_ANNUAL_PRODUCT_ID;
+
+      const monthlyProductId = rawMonthlyId ? rawMonthlyId.trim().replace(/^["']|["']$/g, "") : "";
+      const annualProductId = rawAnnualId ? rawAnnualId.trim().replace(/^["']|["']$/g, "") : "";
 
       const productId = input.billingPeriod === "annual" ? annualProductId : monthlyProductId;
 

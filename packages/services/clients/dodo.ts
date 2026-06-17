@@ -2,10 +2,13 @@ import DodoPayments from "dodopayments";
 import crypto from "node:crypto";
 import { env } from "../env";
 
-export const dodo = env.DODO_PAYMENTS_API_KEY
+const rawKey = env.DODO_PAYMENTS_API_KEY;
+const cleanKey = rawKey ? rawKey.trim().replace(/^["']|["']$/g, "") : "";
+
+export const dodo = cleanKey
   ? new DodoPayments({
-      bearerToken: env.DODO_PAYMENTS_API_KEY,
-      environment: env.DODO_PAYMENTS_API_KEY.startsWith("dp_test_") ? "test_mode" : "live_mode",
+      bearerToken: cleanKey,
+      environment: cleanKey.startsWith("dp_test_") ? "test_mode" : "live_mode",
     })
   : null;
 
