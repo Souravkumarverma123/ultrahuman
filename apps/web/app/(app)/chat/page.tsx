@@ -197,9 +197,6 @@ export default function ChatPage() {
         <div className="flex items-center gap-2">
           <Bot className="h-5 w-5 text-primary animate-pulse" />
           <h1 className="font-extrabold text-lg tracking-tight">AI Orchestrator</h1>
-          <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider ml-1">
-            OpenAI GPT-4o
-          </Badge>
         </div>
 
         <Button
@@ -277,7 +274,7 @@ export default function ChatPage() {
               <div className="p-4 bg-card border border-border/80 rounded-2xl shadow-sm max-w-[80%] flex items-center gap-2.5">
                 <RefreshCw className="h-4.5 w-4.5 animate-spin text-primary" />
                 <span className="text-sm text-muted-foreground">
-                  Thinking and calling Corsair tools...
+                  Agent is working on it...
                 </span>
               </div>
             </div>

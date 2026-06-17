@@ -19,16 +19,58 @@ export class AgentOrchestratorService {
     this.defaultModel = process.env.AGENT_MODEL || "gpt-4o-mini";
     this.allowedModelNames = new Set([
       this.defaultModel,
+      "gpt-5",
+      "gpt-5-mini",
+      "gpt-4o",
       "gpt-4o-mini",
-      ...(process.env.AGENT_ALLOW_EXPENSIVE_MODELS === "true" ? ["gpt-4o"] : []),
+      process.env.EMAIL_MODEL || "gpt-5-mini",
+      process.env.PLANNER_MODEL || "gpt-4o-mini",
+      process.env.CALENDAR_MODEL || "gpt-4o-mini",
+      process.env.SEARCH_MODEL || "gpt-4o-mini",
     ]);
   }
 
-  private sanitizeModel(modelName?: string): string {
+  private selectModelForTask(message: string, modelName?: string): string {
+    // If a valid model was explicitly requested by the client, use it directly
     if (modelName && this.allowedModelNames.has(modelName)) {
       return modelName;
     }
-    return this.defaultModel;
+
+    const msg = message.toLowerCase();
+
+    // Read configured models from environment variables
+    const emailModel = process.env.EMAIL_MODEL || "gpt-5-mini";
+    const plannerModel = process.env.PLANNER_MODEL || "gpt-4o-mini";
+    const calendarModel = process.env.CALENDAR_MODEL || "gpt-4o-mini";
+    const searchModel = process.env.SEARCH_MODEL || "gpt-4o-mini";
+
+    // 1. Planning / Multi-step coordination
+    const requiresPlanning = msg.includes(" and ") || msg.includes(" then ") || msg.includes(" also ") || /\b(plan|coordinate|sequence|workflow)\b/i.test(msg);
+    if (requiresPlanning) {
+      return plannerModel;
+    }
+
+    // 2. Email drafting
+    const requiresEmailDrafting = /\b(draft|write|compose|send|reply|replying|email|mail|message|template)\b/i.test(msg) && 
+                                  !/\b(search|find|show|list|get|check)\b/i.test(msg);
+    if (requiresEmailDrafting) {
+      return emailModel;
+    }
+
+    // 3. Calendar operations
+    const isCalendarTask = /\b(schedule|calendar|meet|meeting|event|appointment|invite|scheduling|availability)\b/i.test(msg);
+    if (isCalendarTask) {
+      return calendarModel;
+    }
+
+    // 4. Search and lookups
+    const isSearchTask = /\b(search|find|show|list|get|check|threads?|inbox)\b/i.test(msg);
+    if (isSearchTask) {
+      return searchModel;
+    }
+
+    // Default fallback
+    return searchModel;
   }
 
   private zodShapeToJsonSchema(shape: z.ZodRawShape) {
@@ -254,8 +296,7 @@ CRITICAL DIRECTIVES:
     let totalTokens = 0;
 
     for (let round = 0; round < 5; round++) {
-      const response = await this.openai.chat.completions.create({
-        model: this.sanitizeModel(model),
+      const response = await this.openai.chat.completions.create({        model: this.selectModelForTask(message, model),
         messages: apiMessages,
         tools,
         tool_choice: "auto",
@@ -267,17 +308,17 @@ CRITICAL DIRECTIVES:
         totalTokens += response.usage.total_tokens;
       }
 
-      const message = response.choices[0]?.message;
-      if (!message) break;
+      const responseMessage = response.choices[0]?.message;
+      if (!responseMessage) break;
 
-      apiMessages.push(message);
+      apiMessages.push(responseMessage);
 
-      if (!message.tool_calls || message.tool_calls.length === 0) {
-        finalReply = message.content ?? "Done.";
+      if (!responseMessage.tool_calls || responseMessage.tool_calls.length === 0) {
+        finalReply = responseMessage.content ?? "Done.";
         break;
       }
 
-      for (const toolCall of message.tool_calls) {
+      for (const toolCall of responseMessage.tool_calls) {
         const tc = toolCall as any;
         if (!tc.function) continue;
         const args = JSON.parse(tc.function.arguments) as Record<string, unknown>;
