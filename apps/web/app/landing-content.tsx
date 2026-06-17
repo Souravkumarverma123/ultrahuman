@@ -210,7 +210,10 @@ function ProductMockup() {
         {/* Raycast/Spotlight Style Search Bar */}
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/80 border border-border/80 text-xs text-foreground font-sans w-2/3 max-w-[280px] shadow-inner">
           <Search className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
-          <span className="truncate text-muted-foreground flex-1 font-medium">Schedule invite and send follow-up</span>
+          <span className="truncate text-muted-foreground flex-1 font-medium flex items-center gap-0.5">
+            Schedule invite and send follow-up
+            <span className="inline-block w-[1.5px] h-3 bg-primary/70 animate-pulse ml-0.5" />
+          </span>
           <span className="text-[9px] font-semibold text-muted-foreground/80 bg-background border border-border px-1.5 py-0.5 rounded shadow-sm font-sans tracking-wide">
             ⌘K
           </span>
@@ -301,6 +304,10 @@ function ProductMockup() {
               <Sparkles className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
             </div>
             <span>Agent Plan Executed</span>
+            <span className="relative flex h-2 w-2 ml-1">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
           </div>
           <div className="flex items-center gap-3 text-[11px] font-mono text-muted-foreground flex-wrap">
             <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
@@ -471,8 +478,8 @@ export function LandingContent() {
       {/* Hero Section */}
       <section className="mx-auto max-w-7xl px-6 py-12 md:py-16">
         <div className="bg-card border border-border rounded-[24px] md:rounded-[32px] p-6 sm:p-8 md:p-12 shadow-sm hover:shadow-md transition-shadow duration-300">
-          <div className="grid gap-12 lg:grid-cols-[0.95fr_1.05fr] items-center">
-            <div className="max-w-xl">
+          <div className="grid gap-12 lg:grid-cols-[1.15fr_0.85fr] items-center">
+            <div className="max-w-2xl">
               {/* Integration badge pill */}
               <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground font-medium mb-8">
                 <Sparkles className="h-3.5 w-3.5 text-primary" />
@@ -489,12 +496,17 @@ export function LandingContent() {
                 </span>
               </div>
 
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold tracking-tight text-foreground leading-[1.08]">
-                Pull Gmail & Calendar into your daily plan.
+              <h1 className="text-4xl md:text-5xl lg:text-5xl font-semibold tracking-tight text-foreground leading-[1.15]">
+                Automate{" "}
+                <span className="bg-gradient-to-r from-primary via-[#ff7330] to-[#ff4e00] bg-clip-text text-transparent font-bold sm:whitespace-nowrap">
+                  Gmail & Calendar
+                </span>{" "}
+                <br className="hidden lg:inline" />
+                with AI
               </h1>
 
               <TextGenerateEffect
-                words="Keep the power of Google workflows, but wrap them in the controls you actually need: unified inbox triage, time blocking, and automated agent assistance."
+                words="Connect your accounts and let AI draft emails, schedule meetings, create Google Meet links, manage invitations, and organize your day from one workspace."
                 className="mt-6"
                 textClassName="text-lg leading-relaxed text-muted-foreground font-normal"
                 duration={0.4}
@@ -534,7 +546,9 @@ export function LandingContent() {
               </div>
             </div>
 
-            <div>
+            <div className="relative">
+              {/* Soft mesh ambient glow blob */}
+              <div className="absolute -inset-2 bg-gradient-to-tr from-primary/20 via-orange-500/10 to-transparent blur-3xl rounded-[32px] opacity-70 pointer-events-none -z-10" />
               <ProductMockup />
             </div>
           </div>
