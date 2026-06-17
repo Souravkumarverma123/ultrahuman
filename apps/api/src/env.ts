@@ -7,6 +7,10 @@ const envSchema = z.object({
   WEB_URL: z.string().default("http://localhost:3000"),
   BETTER_AUTH_SECRET: z.string().min(32).describe("Better Auth secret key"),
   BETTER_AUTH_URL: z.string().default("http://localhost:8000"),
+  DODO_PAYMENTS_API_KEY: z.string().optional(),
+  DODO_PAYMENTS_WEBHOOK_KEY: z.string().optional(),
+  DODO_PAYMENTS_MONTHLY_PRODUCT_ID: z.string().optional(),
+  DODO_PAYMENTS_ANNUAL_PRODUCT_ID: z.string().optional(),
 });
 
 function createEnv(env: NodeJS.ProcessEnv) {

@@ -10,8 +10,6 @@ import {
   CalendarClock,
   CalendarDays,
   CheckCircle2,
-  Clock3,
-  Command,
   Database,
   Inbox,
   Keyboard,
@@ -20,10 +18,8 @@ import {
   Moon,
   Search,
   Send,
-  ShieldCheck,
   Sparkles,
   Sun,
-  Zap,
   Github,
   Slack,
 } from "lucide-react";
@@ -33,10 +29,11 @@ import { InfiniteMovingCards } from "~/components/ui/infinite-moving-cards";
 import { TextGenerateEffect } from "~/components/ui/text-generate-effect";
 
 const navItems = [
-  { label: "Workflow", href: "#workflow" },
-  { label: "Search", href: "#search" },
-  { label: "Agent", href: "#agent" },
-  { label: "FAQ", href: "#faq" },
+  { label: "Workflow", href: "/#workflow" },
+  { label: "Search", href: "/#search" },
+  { label: "Agent", href: "/#agent" },
+  { label: "Pricing", href: "/pricing" },
+  { label: "FAQ", href: "/#faq" },
 ];
 
 const metrics = [
@@ -904,22 +901,27 @@ export function LandingContent() {
                 <h4 className="text-xs font-semibold text-foreground tracking-wider uppercase opacity-80">Pages</h4>
                 <ul className="flex flex-col gap-2.5 text-xs text-muted-foreground">
                   <li>
-                    <Link href="#workflow" className="hover:text-foreground transition-colors duration-150">
+                    <Link href="/#workflow" className="hover:text-foreground transition-colors duration-150">
                       Workflow
                     </Link>
                   </li>
                   <li>
-                    <Link href="#search" className="hover:text-foreground transition-colors duration-150">
+                    <Link href="/#search" className="hover:text-foreground transition-colors duration-150">
                       Search
                     </Link>
                   </li>
                   <li>
-                    <Link href="#agent" className="hover:text-foreground transition-colors duration-150">
+                    <Link href="/#agent" className="hover:text-foreground transition-colors duration-150">
                       Agent
                     </Link>
                   </li>
                   <li>
-                    <Link href="#faq" className="hover:text-foreground transition-colors duration-150">
+                    <Link href="/pricing" className="hover:text-foreground transition-colors duration-150">
+                      Pricing
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/#faq" className="hover:text-foreground transition-colors duration-150">
                       FAQ
                     </Link>
                   </li>

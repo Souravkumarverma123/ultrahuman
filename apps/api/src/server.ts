@@ -13,7 +13,8 @@ import { apiReference } from "@scalar/express-api-reference";
 import { serverRouter, createContext } from "@repo/trpc/server";
 import { corsair, processOAuthCallback } from "@repo/services/corsair";
 import { auth } from "@repo/auth";
-import { checkDatabaseConnection } from "@repo/database";
+import { checkDatabaseConnection, db, payments, user, eq } from "@repo/database";
+import { verifyDodoWebhookSignature } from "@repo/services/clients/dodo";
 
 import { env } from "./env";
 import { emitCorsairWebhookEvent, subscribeToCorsairEvents } from "./sse";
@@ -137,6 +138,84 @@ app.post("/webhooks/corsair", express.raw({ type: "*/*", limit: "2mb" }), async 
   } catch (err) {
     logger.error("[webhook] Error processing Corsair webhook", { err });
     return res.status(500).json({ error: "Webhook processing failed" });
+  }
+});
+
+// ─── Dodo Payments: Webhook handler (Payment captured asynchronous updates) ────
+app.post("/webhooks/dodo", express.raw({ type: "*/*" }), async (req, res) => {
+  const webhookSecret = env.DODO_PAYMENTS_WEBHOOK_KEY;
+
+  if (!webhookSecret) {
+    logger.warn("[dodo-webhook] Missing DODO_PAYMENTS_WEBHOOK_KEY config");
+    return res.status(500).json({ error: "Missing webhook secret" });
+  }
+
+  const rawBody = Buffer.isBuffer(req.body)
+    ? req.body.toString("utf-8")
+    : typeof req.body === "string"
+      ? req.body
+      : JSON.stringify(req.body ?? {});
+
+  const isValid = verifyDodoWebhookSignature(rawBody, req.headers, webhookSecret);
+  if (!isValid) {
+    logger.error("[dodo-webhook] Webhook signature verification failed");
+    return res.status(400).json({ error: "Invalid signature" });
+  }
+
+  try {
+    const event = JSON.parse(rawBody);
+    logger.info(`[dodo-webhook] Received event: ${event.type}`);
+
+    if (
+      event.type === "payment.succeeded" ||
+      event.type === "subscription.active" ||
+      event.type === "subscription.renewed"
+    ) {
+      const dataObj = event.data;
+      const dodoPaymentId = dataObj.payment_id || dataObj.transaction_id || null;
+      const dodoSubscriptionId = dataObj.subscription_id || null;
+      
+      const metadata = dataObj.metadata || {};
+      const paymentId = metadata.paymentId;
+
+      if (!paymentId) {
+        logger.warn("[dodo-webhook] Webhook event missing paymentId in metadata");
+        return res.status(200).json({ status: "ignored", reason: "missing paymentId in metadata" });
+      }
+
+      const [existingPayment] = await db
+        .select()
+        .from(payments)
+        .where(eq(payments.id, paymentId))
+        .limit(1);
+
+      if (existingPayment && existingPayment.status !== "success") {
+        await db
+          .update(payments)
+          .set({
+            status: "success",
+            dodoPaymentId,
+            dodoSubscriptionId,
+            updatedAt: new Date(),
+          })
+          .where(eq(payments.id, paymentId));
+
+        await db
+          .update(user)
+          .set({
+            subscriptionTier: "pro",
+            updatedAt: new Date(),
+          })
+          .where(eq(user.id, existingPayment.userId));
+
+        logger.info(`[dodo-webhook] Promoted user=${existingPayment.userId} to Pro tier via webhook`);
+      }
+    }
+
+    return res.status(200).json({ received: true });
+  } catch (error) {
+    logger.error("[dodo-webhook] Failed to parse or process webhook event", { error });
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 

@@ -43,6 +43,13 @@
       "when": 1781631283121,
       "tag": "0005_soft_lightspeed",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1781651707053,
+      "tag": "0006_handy_bastion",
+      "breakpoints": true
     }
   ]
 }
