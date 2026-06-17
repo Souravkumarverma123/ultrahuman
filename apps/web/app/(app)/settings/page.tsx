@@ -310,7 +310,7 @@ function SettingsPageContent() {
                   </>
                 ) : (
                   <>
-                    Upgrade to Pro (₹499/mo)
+                    Upgrade to Pro (₹999/mo)
                     <ArrowRight className="h-4 w-4 ml-1.5" />
                   </>
                 )}

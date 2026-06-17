@@ -38,8 +38,8 @@ export const paymentRouter = router({
       }
 
       const productId = input.billingPeriod === "annual" ? annualProductId : monthlyProductId;
-      // Price in Subunits (₹499 => 49900 paise, ₹4,990 => 499000 paise)
-      const amount = input.billingPeriod === "annual" ? 499000 : 49900;
+      // Price in Subunits (₹999 => 99900 paise, ₹1,199 => 119900 paise)
+      const amount = input.billingPeriod === "annual" ? 119900 : 99900;
       const localPaymentId = `pay_${crypto.randomUUID()}`;
       
       const webUrl = process.env.WEB_URL || "http://localhost:3000";

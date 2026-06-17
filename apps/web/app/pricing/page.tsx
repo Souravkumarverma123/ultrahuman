@@ -222,7 +222,7 @@ export default function PricingPage() {
               <CardDescription className="text-sm">For power users who need multi-account sync and full AI orchestrator support.</CardDescription>
               <div className="pt-4 flex items-baseline">
                 <span className="text-4xl font-extrabold tracking-tight">
-                  {isAnnual ? "₹4,990" : "₹499"}
+                  {isAnnual ? "₹1,199" : "₹999"}
                 </span>
                 <span className="text-muted-foreground text-sm ml-2">
                   / {isAnnual ? "year" : "month"}
