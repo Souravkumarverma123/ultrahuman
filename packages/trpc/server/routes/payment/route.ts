@@ -30,14 +30,14 @@ export const paymentRouter = router({
       const monthlyProductId = process.env.DODO_PAYMENTS_MONTHLY_PRODUCT_ID;
       const annualProductId = process.env.DODO_PAYMENTS_ANNUAL_PRODUCT_ID;
 
-      if (!monthlyProductId || !annualProductId) {
+      const productId = input.billingPeriod === "annual" ? annualProductId : monthlyProductId;
+
+      if (!productId) {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: "Dodo Payments product IDs are not configured on the server.",
+          message: `Dodo Payments product ID for ${input.billingPeriod} subscription is not configured on the server.`,
         });
       }
-
-      const productId = input.billingPeriod === "annual" ? annualProductId : monthlyProductId;
       // Price in Subunits (₹999 => 99900 paise, ₹1,199 => 119900 paise)
       const amount = input.billingPeriod === "annual" ? 119900 : 99900;
       const localPaymentId = `pay_${crypto.randomUUID()}`;
