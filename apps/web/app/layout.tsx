@@ -15,6 +15,9 @@ const geistMono = localFont({
 export const metadata: Metadata = {
   title: "Ultrahuman",
   description: "Ultrahuman — makes your life easy ",
+  verification: {
+    google: "WGpsRABqkPLLUOHTS2FZaZEq4iy_JNce4O0RJH9EW40",
+  },
   icons: {
     icon: "/ultrahuman-logo.svg",
   },
