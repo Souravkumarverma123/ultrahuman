@@ -40,9 +40,13 @@ function LoginForm() {
     });
 
     if (error) {
+      const msg = (error.message || "").toLowerCase();
       const isUnverified =
-        error.message?.toLowerCase().includes("verify") ||
-        error.message?.toLowerCase().includes("verification") ||
+        msg.includes("verify") ||
+        msg.includes("verification") ||
+        msg.includes("not verified") ||
+        msg.includes("unauthorized") ||
+        error.status === 401 ||
         error.code === "EMAIL_NOT_VERIFIED";
 
       if (isUnverified) {
