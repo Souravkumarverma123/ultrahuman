@@ -27,7 +27,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~
 export default function PricingPage() {
   const router = useRouter();
   const { data: session } = useSession();
-  const [isAnnual, setIsAnnual] = useState(false);
   const [loadingCheckout, setLoadingCheckout] = useState(false);
   const [isDark, setIsDark] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -59,7 +58,7 @@ export default function PricingPage() {
 
       // 1. Create order on the backend
       const order = await createCheckoutOrder.mutateAsync({
-        billingPeriod: isAnnual ? "annual" : "monthly",
+        billingPeriod: "monthly",
       });
 
       // 2. Redirect to Dodo hosted checkout page
@@ -187,28 +186,7 @@ export default function PricingPage() {
             Get unified control over your email inbox and schedule. Run advanced AI agent workflows that automate repetitive calendar and email coordination.
           </p>
 
-          {/* Toggle switcher */}
-          <div className="flex items-center justify-center gap-3 pt-6">
-            <span className={`text-sm font-medium ${!isAnnual ? "text-foreground" : "text-muted-foreground"}`}>Monthly Billing</span>
-            <button
-              onClick={() => setIsAnnual(!isAnnual)}
-              className="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-muted transition-colors duration-200 ease-in-out focus:outline-none"
-              role="switch"
-              aria-checked={isAnnual}
-            >
-              <span
-                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-primary shadow ring-0 transition duration-200 ease-in-out ${
-                  isAnnual ? "translate-x-5" : "translate-x-0"
-                }`}
-              />
-            </button>
-            <span className={`text-sm font-medium ${isAnnual ? "text-foreground" : "text-muted-foreground"} flex items-center gap-1.5`}>
-              Annual Billing
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 dark:text-emerald-400">
-                Save ~16%
-              </span>
-            </span>
-          </div>
+
         </div>
 
         {/* Plan Cards */}
@@ -271,12 +249,8 @@ export default function PricingPage() {
               <CardTitle className="text-2xl font-bold text-foreground">Pro Upgrader</CardTitle>
               <CardDescription className="text-sm">For power users who need multi-account sync and full AI orchestrator support.</CardDescription>
               <div className="pt-4 flex items-baseline">
-                <span className="text-4xl font-extrabold tracking-tight">
-                  {isAnnual ? "₹1,199" : "₹999"}
-                </span>
-                <span className="text-muted-foreground text-sm ml-2">
-                  / {isAnnual ? "year" : "month"}
-                </span>
+                <span className="text-4xl font-extrabold tracking-tight">₹999</span>
+                <span className="text-muted-foreground text-sm ml-2">/ month</span>
               </div>
             </CardHeader>
             <CardContent className="space-y-4 flex-1">
