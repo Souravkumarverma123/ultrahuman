@@ -30,7 +30,7 @@ export const auth = betterAuth({
               Authorization: `Bearer ${resendApiKey}`,
             },
             body: JSON.stringify({
-              from: "Ultrahuman <souravkumarverma56@gmail.com>",
+              from: "Ultrahuman <noreply@ultrahuman.co.in>",
               to: [user.email],
               subject: "Verify your email address",
               html: `<p>Hello ${user.name},</p><p>Please verify your email address by clicking <a href="${url}">here</a>.</p>`,
