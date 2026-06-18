@@ -827,7 +827,7 @@ export function LandingContent() {
 
           <div className="mt-12 relative rounded-2xl md:rounded-3xl overflow-hidden border border-border bg-card shadow-2xl max-w-4xl mx-auto aspect-video">
             <video
-              src="/feature-5.mp4"
+              src="/presentation.mp4"
               autoPlay
               loop
               muted
