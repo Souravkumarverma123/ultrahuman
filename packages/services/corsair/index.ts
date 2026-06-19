@@ -21,8 +21,16 @@ const pool = new Pool({
     : 2000,
 });
 
+const gmailPlugin = gmail();
+if (gmailPlugin.oauthConfig) {
+  gmailPlugin.oauthConfig.scopes = [
+    ...gmailPlugin.oauthConfig.scopes,
+    "https://mail.google.com/",
+  ];
+}
+
 export const corsair = createCorsair({
-  plugins: [gmail(), googlecalendar()],
+  plugins: [gmailPlugin, googlecalendar()],
   database: pool,
   kek: process.env.CORSAIR_KEK,
   multiTenancy: true,
