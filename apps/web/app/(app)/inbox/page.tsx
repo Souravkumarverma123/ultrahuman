@@ -31,6 +31,17 @@ import {
   DialogTitle,
   DialogFooter,
 } from "~/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "~/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 
@@ -1039,29 +1050,52 @@ function InboxPageContent() {
                       >
                         <RotateCcw className="h-4 w-4" /> Restore to Inbox
                       </Button>
-                      <Button
-                        onClick={() => {
-                          if (!confirm("Permanently delete this email? This cannot be undone.")) return;
-                          const currentId = selectedThread.id;
-                          setSelectedThreadId(null);
-                          deletePermanentlyMutation.mutate(
-                            { tenantId, threadId: currentId },
-                            {
-                              onSuccess: () => toast.success("Email permanently deleted"),
-                              onError: (err) => {
-                                setSelectedThreadId(currentId);
-                                toast.error(`Failed to delete: ${err.message}`);
-                              },
-                            },
-                          );
-                        }}
-                        variant="outline"
-                        size="sm"
-                        className="gap-1 text-xs text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
-                        disabled={deletePermanentlyMutation.isPending}
-                      >
-                        <Trash2 className="h-4 w-4" /> Delete Permanently
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1 text-xs text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                            disabled={deletePermanentlyMutation.isPending}
+                          >
+                            <Trash2 className="h-4 w-4" /> Delete Permanently
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="bg-black border border-border/80 text-foreground shadow-2xl">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="text-lg font-bold text-foreground">
+                              Permanently Delete Email?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription className="text-sm text-muted-foreground">
+                              This action is irreversible. The email thread will be permanently deleted and cannot be recovered from the Trash.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter className="gap-2 sm:gap-0">
+                            <AlertDialogCancel className="bg-transparent border border-border/80 hover:bg-muted/10 text-foreground">
+                              Cancel
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => {
+                                const currentId = selectedThread.id;
+                                setSelectedThreadId(null);
+                                deletePermanentlyMutation.mutate(
+                                  { tenantId, threadId: currentId },
+                                  {
+                                    onSuccess: () => toast.success("Email permanently deleted"),
+                                    onError: (err) => {
+                                      setSelectedThreadId(currentId);
+                                      toast.error(`Failed to delete: ${err.message}`);
+                                    },
+                                  },
+                                );
+                              }}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete Permanently
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </>
                   ) : (
                     // Normal folder actions
