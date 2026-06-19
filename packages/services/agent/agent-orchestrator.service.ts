@@ -234,13 +234,19 @@ CRITICAL DIRECTIVES:
    - list_operations: List available operations under 'gmail' and 'googlecalendar'.
    - get_schema: Get the parameter schema for any operation path (e.g. 'gmail.api.messages.send').
    - run_script: Run a JavaScript script with the scoped 'corsair' instance in scope. You MUST use 'run_script' to perform any actions on Gmail or Google Calendar.
-   
-   Example scripts to write:
-   // To list threads:
-   const result = await corsair.gmail.api.threads.list({ maxResults: 10 });
-   return result;
 
-   // To send an email:
+5. EMAIL DRAFTING WORKFLOW (MOST IMPORTANT):
+   When the user says "draft", "write", "compose", or "prepare" an email:
+   - DO NOT send the email immediately.
+   - First THINK about the email and compose a complete, well-formatted professional email body based on the user's intent/summary.
+   - The email body must be a proper email (greeting, content paragraphs, closing, signature), NOT just the user's raw summary words.
+   - Return the composed email ONLY in this EXACT format (nothing else after the block):
+     %%EMAIL_DRAFT%%
+     {"to":"recipient@example.com","subject":"Subject Line Here","body":"Full composed email body here with proper greeting, paragraphs and closing."}
+     %%END_DRAFT%%
+
+6. EMAIL SENDING WORKFLOW:
+   When the user explicitly says "send" (not "draft"), use run_script to send immediately:
    const headers = ["To: someone@example.com", "Subject: Hello from Corsair"];
    const mimeMessage = headers.join("\\r\\n") + "\\r\\n\\r\\n" + "This is the email body content.";
    const result = await corsair.gmail.api.messages.send({
@@ -248,23 +254,10 @@ CRITICAL DIRECTIVES:
    });
    return result;
 
-   // To create a calendar invite:
-   const result = await corsair.googlecalendar.api.events.create({
-     calendarId: "primary",
-     event: {
-       summary: "Product sync",
-       start: { dateTime: "2026-06-18T09:00:00Z", timeZone: "UTC" },
-       end: { dateTime: "2026-06-18T10:00:00Z", timeZone: "UTC" },
-       attendees: [{ email: "friend@corsair.dev" }]
-     },
-     sendNotifications: true
-   });
-   return result;
-
-5. NEVER wrap your script inside an 'async function main()' or other wrapper function. Write your code directly at the top level of the script.
-6. Google Meet creation requires 'conferenceDataVersion: 1' as a top-level property and 'conferenceData: { createRequest: { requestId: String(Math.random()), conferenceSolutionKey: { type: "hangoutsMeet" } } }' inside the 'event' object.
-7. When accessing property values on API return values, ALWAYS use optional chaining (e.g. 'result.conferenceData?.entryPoints?.[0]?.uri') to safely handle undefined values.
-8. When you send or reply to an email, you MUST include a relative link to view the sent email thread in your final response in this exact format: [View Sent Email](/inbox?threadId=<threadId>). NEVER prepend a domain (like mail.google.com) to this link. Place it naturally.`;
+7. NEVER wrap your script inside an 'async function main()' or other wrapper function. Write your code directly at the top level of the script.
+8. Google Meet creation requires 'conferenceDataVersion: 1' as a top-level property and 'conferenceData: { createRequest: { requestId: String(Math.random()), conferenceSolutionKey: { type: "hangoutsMeet" } } }' inside the 'event' object.
+9. When accessing property values on API return values, ALWAYS use optional chaining (e.g. 'result.conferenceData?.entryPoints?.[0]?.uri') to safely handle undefined values.
+10. When you send or reply to an email (not draft), you MUST include a relative link to view the sent email thread in your final response in this exact format: [View Sent Email](/inbox?threadId=<threadId>). NEVER prepend a domain (like mail.google.com) to this link. Place it naturally.`;
 
     const apiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
       { role: "system", content: systemPrompt },

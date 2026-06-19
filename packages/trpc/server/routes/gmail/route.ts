@@ -208,6 +208,39 @@ class GmailRouterFactory extends BaseCorsairRouter<any> {
   protected tags = TAGS;
 }
 
+// ─── MIME / EML builder ──────────────────────────────────────────────────────
+// Produces a fully RFC 2822-compliant MIME message (.eml format).
+// Gmail's `messages.send` and `drafts.create` raw field require exactly this.
+function buildMimeMessage(opts: {
+  to: string[];
+  cc?: string[];
+  bcc?: string[];
+  subject: string;
+  body: string;
+  replyToMessageId?: string;
+}): string {
+  const date = new Date().toUTCString(); // RFC 2822 date
+  const lines: string[] = [
+    `Date: ${date}`,
+    `To: ${opts.to.join(", ")}`,
+  ];
+  if (opts.cc && opts.cc.length > 0) lines.push(`Cc: ${opts.cc.join(", ")}`);
+  if (opts.bcc && opts.bcc.length > 0) lines.push(`Bcc: ${opts.bcc.join(", ")}`);
+  lines.push(`Subject: ${opts.subject}`);
+  if (opts.replyToMessageId) {
+    lines.push(`In-Reply-To: ${opts.replyToMessageId}`);
+    lines.push(`References: ${opts.replyToMessageId}`);
+  }
+  // Standard MIME headers required for a valid .eml file
+  lines.push(`MIME-Version: 1.0`);
+  lines.push(`Content-Type: text/plain; charset="UTF-8"`);
+  lines.push(`Content-Transfer-Encoding: 7bit`);
+  // Blank line separates headers from body (RFC 2822 §2.1)
+  lines.push(``);
+  lines.push(opts.body);
+  return lines.join("\r\n");
+}
+
 const factory = new GmailRouterFactory();
 
 export const gmailRouter = router({
@@ -319,22 +352,16 @@ export const gmailRouter = router({
     .output(z.object({ messageId: z.string(), success: z.boolean() }))
     .mutation(async ({ input, ctx }) => {
       const client = corsair.withTenant(ctx.session.user.id);
-      const headersList: string[] = [];
-      headersList.push(`To: ${input.to.join(", ")}`);
-      if (input.cc && input.cc.length > 0) {
-        headersList.push(`Cc: ${input.cc.join(", ")}`);
-      }
-      if (input.bcc && input.bcc.length > 0) {
-        headersList.push(`Bcc: ${input.bcc.join(", ")}`);
-      }
-      headersList.push(`Subject: ${input.subject}`);
 
-      if (input.replyToMessageId) {
-        headersList.push(`In-Reply-To: ${input.replyToMessageId}`);
-        headersList.push(`References: ${input.replyToMessageId}`);
-      }
-
-      const mimeMessage = headersList.join("\r\n") + "\r\n\r\n" + input.body;
+      // Build a fully RFC 2822-compliant MIME (.eml) message
+      const mimeMessage = buildMimeMessage({
+        to: input.to,
+        cc: input.cc,
+        bcc: input.bcc,
+        subject: input.subject,
+        body: input.body,
+        replyToMessageId: input.replyToMessageId,
+      });
       const raw = Buffer.from(mimeMessage).toString("base64url");
 
       const result = await client.gmail.api.messages.send({
@@ -362,12 +389,18 @@ export const gmailRouter = router({
     .output(z.object({ draftId: z.string(), success: z.boolean() }))
     .mutation(async ({ input, ctx }) => {
       const client = corsair.withTenant(ctx.session.user.id);
+
+      // Build a fully RFC 2822-compliant MIME (.eml) message
+      const mimeMessage = buildMimeMessage({
+        to: input.to,
+        subject: input.subject,
+        body: input.body,
+      });
+
       const result = await client.gmail.api.drafts.create({
         draft: {
           message: {
-            raw: Buffer.from(
-              `To: ${input.to.join(", ")}\r\nSubject: ${input.subject}\r\n\r\n${input.body}`,
-            ).toString("base64url"),
+            raw: Buffer.from(mimeMessage).toString("base64url"),
           },
         },
       });

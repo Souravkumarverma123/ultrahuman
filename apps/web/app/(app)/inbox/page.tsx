@@ -11,9 +11,11 @@ import {
   Send,
   Sparkles,
   CornerUpLeft,
+  CornerUpRight,
   Plus,
   RefreshCw,
   X,
+  Paperclip,
 } from "lucide-react";
 import { trpc } from "~/trpc/client";
 import { useTenant } from "~/hooks/use-tenant";
@@ -35,34 +37,63 @@ import { useSearchParams } from "next/navigation";
 
 type Folder = "INBOX" | "STARRED" | "SENT" | "ARCHIVE" | "TRASH";
 
-function buildEmailSrcDoc(html: string) {
+function buildEmailSrcDoc(html: string, frameId: string) {
   return `<!doctype html>
 <html>
   <head>
     <base target="_blank" />
     <meta charset="utf-8" />
     <style>
-      html, body { margin: 0; padding: 0; color: #111827; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.55; }
+      html, body { margin: 0; padding: 8px; color: #111827; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.55; overflow: hidden; }
       img { max-width: 100%; height: auto; }
       a { color: #2563eb; }
       table { max-width: 100%; }
     </style>
   </head>
   <body>${html}</body>
+  <script>
+    function report() {
+      var h = document.body.scrollHeight;
+      window.parent.postMessage({ type: 'iframe-resize', id: '${frameId}', height: h }, '*');
+    }
+    document.addEventListener('DOMContentLoaded', report);
+    window.addEventListener('load', report);
+    setTimeout(report, 200);
+    setTimeout(report, 800);
+  </script>
 </html>`;
 }
 
 function EmailBody({ body, snippet, isHtml }: { body: string; snippet: string; isHtml?: boolean }) {
   const content = body || snippet;
+  const frameId = useRef(`ef-${Math.random().toString(36).slice(2, 8)}`).current;
+  const [frameHeight, setFrameHeight] = useState(200);
+
+  useEffect(() => {
+    const onMessage = (e: MessageEvent) => {
+      if (
+        e.data &&
+        e.data.type === "iframe-resize" &&
+        e.data.id === frameId &&
+        typeof e.data.height === "number" &&
+        e.data.height > 0
+      ) {
+        setFrameHeight(e.data.height + 16);
+      }
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [frameId]);
 
   if (isHtml) {
     return (
       <iframe
         title="Email HTML body"
-        sandbox=""
+        sandbox="allow-scripts"
         referrerPolicy="no-referrer"
-        srcDoc={buildEmailSrcDoc(content)}
-        className="h-72 w-full rounded-lg border border-border bg-white"
+        srcDoc={buildEmailSrcDoc(content, frameId)}
+        className="w-full rounded-lg border border-border bg-white block"
+        style={{ height: `${frameHeight}px`, minHeight: "120px" }}
       />
     );
   }
@@ -81,6 +112,11 @@ function InboxPageContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
+  const [showReplyPanel, setShowReplyPanel] = useState(false);
+  const [showForwardPanel, setShowForwardPanel] = useState(false);
+  const [forwardToInput, setForwardToInput] = useState("");
+  const [forwardAttachments, setForwardAttachments] = useState<File[]>([]);
+  const forwardFileRef = useRef<HTMLInputElement>(null);
 
   // Initialize selectedThreadId from searchParams if present
   useEffect(() => {
@@ -489,6 +525,12 @@ function InboxPageContent() {
     if (!selectedThreadId) {
       markedReadThreadIds.current.clear();
     }
+    // Reset reply/forward panels when switching threads
+    setShowReplyPanel(false);
+    setReplyBodyInput("");
+    setShowForwardPanel(false);
+    setForwardToInput("");
+    setForwardAttachments([]);
   }, [selectedThreadId]);
 
   const handleComposeSubmit = (e: React.FormEvent) => {
@@ -544,10 +586,58 @@ function InboxPageContent() {
         onSuccess: () => {
           toast.success("Reply sent!");
           setReplyBodyInput("");
+          setShowReplyPanel(false);
+          // Refetch the open thread so the reply appears in the conversation
           threadDetailQuery.refetch();
+          // Invalidate thread list so the Sent folder picks up the new message
+          utils.gmail.listThreads.invalidate({ tenantId });
         },
         onError: (err) => {
           toast.error(`Error sending reply: ${err.message}`);
+        },
+      },
+    );
+  };
+
+  const handleForwardSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forwardToInput.trim() || !selectedThread) {
+      toast.error("Please enter a recipient email.");
+      return;
+    }
+
+    const lastMessage = selectedThread.messages?.[selectedThread.messages.length - 1];
+    const originalDate = lastMessage
+      ? new Date(lastMessage.receivedAt).toUTCString()
+      : "";
+    const originalFrom = lastMessage
+      ? `${lastMessage.from.name || lastMessage.from.email} <${lastMessage.from.email}>`
+      : `${selectedThread.from.name || selectedThread.from.email} <${selectedThread.from.email}>`;
+    const originalTo = lastMessage
+      ? lastMessage.to.map((t) => `${t.name || t.email} <${t.email}>`).join(", ")
+      : "";
+    const quotedBody = `\n\n---------- Forwarded message ----------\nFrom: ${originalFrom}\nDate: ${originalDate}\nSubject: ${selectedThread.subject}\nTo: ${originalTo}\n\n${lastMessage?.body || selectedThread.snippet}`;
+
+    sendEmailMutation.mutate(
+      {
+        tenantId,
+        to: forwardToInput.split(",").map((s) => s.trim()),
+        subject: selectedThread.subject.startsWith("Fwd:")
+          ? selectedThread.subject
+          : `Fwd: ${selectedThread.subject}`,
+        body: quotedBody,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Email forwarded!");
+          setShowForwardPanel(false);
+          setForwardToInput("");
+          setForwardAttachments([]);
+          // Invalidate thread list so the Sent folder picks up the forwarded message
+          utils.gmail.listThreads.invalidate({ tenantId });
+        },
+        onError: (err) => {
+          toast.error(`Failed to forward: ${err.message}`);
         },
       },
     );
@@ -913,6 +1003,28 @@ function InboxPageContent() {
                   >
                     <Trash2 className="h-4 w-4" /> Trash
                   </Button>
+                  <Button
+                    onClick={() => {
+                      setShowReplyPanel((prev) => !prev);
+                      setShowForwardPanel(false);
+                    }}
+                    variant={showReplyPanel ? "default" : "outline"}
+                    size="sm"
+                    className="gap-1 text-xs"
+                  >
+                    <CornerUpLeft className="h-4 w-4" /> Reply
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setShowForwardPanel((prev) => !prev);
+                      setShowReplyPanel(false);
+                    }}
+                    variant={showForwardPanel ? "default" : "outline"}
+                    size="sm"
+                    className="gap-1 text-xs"
+                  >
+                    <CornerUpRight className="h-4 w-4" /> Forward
+                  </Button>
                 </div>
 
                 {aiPriorities[selectedThread.id] && (
@@ -968,35 +1080,169 @@ function InboxPageContent() {
                 ))}
               </div>
 
-              {/* Quick Reply Form */}
-              <div className="p-4 border-t border-border bg-card">
-                <form onSubmit={handleReplySubmit} className="space-y-3">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground px-1">
-                    <CornerUpLeft className="h-3.5 w-3.5" />
-                    Reply to{" "}
-                    <span className="font-semibold">
-                      {selectedThread.from.name || selectedThread.from.email}
-                    </span>
-                  </div>
-                  <Textarea
-                    value={replyBodyInput}
-                    onChange={(e) => setReplyBodyInput(e.target.value)}
-                    placeholder="Type your reply here..."
-                    className="min-h-[100px] resize-none text-sm bg-muted/20 border-border/60 focus-visible:ring-1 focus-visible:ring-ring"
-                  />
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      type="submit"
-                      disabled={sendEmailMutation.isPending}
-                      size="sm"
-                      className="gap-1.5 text-xs shadow-sm"
-                    >
-                      <Send className="h-3.5 w-3.5" />{" "}
-                      {sendEmailMutation.isPending ? "Sending..." : "Send Reply"}
-                    </Button>
-                  </div>
-                </form>
-              </div>
+              {/* Quick Reply Form — shown only when Reply button is toggled on */}
+              {showReplyPanel && (
+                <div className="p-4 border-t border-border bg-card">
+                  <form onSubmit={handleReplySubmit} className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground px-1">
+                        <CornerUpLeft className="h-3.5 w-3.5" />
+                        Reply to{" "}
+                        <span className="font-semibold">
+                          {selectedThread.from.name || selectedThread.from.email}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setShowReplyPanel(false); setReplyBodyInput(""); }}
+                        className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded"
+                        title="Close reply"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <Textarea
+                      value={replyBodyInput}
+                      onChange={(e) => setReplyBodyInput(e.target.value)}
+                      placeholder="Type your reply here..."
+                      className="min-h-[100px] resize-none text-sm bg-muted/20 border-border/60 focus-visible:ring-1 focus-visible:ring-ring"
+                      autoFocus
+                    />
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs"
+                        onClick={() => { setShowReplyPanel(false); setReplyBodyInput(""); }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={sendEmailMutation.isPending}
+                        size="sm"
+                        className="gap-1.5 text-xs shadow-sm"
+                      >
+                        <Send className="h-3.5 w-3.5" />{" "}
+                        {sendEmailMutation.isPending ? "Sending..." : "Send Reply"}
+                      </Button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* Forward Panel */}
+              {showForwardPanel && (
+                <div className="p-4 border-t border-border bg-card">
+                  <form onSubmit={handleForwardSubmit} className="space-y-3">
+                    {/* Header */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground px-1">
+                        <CornerUpRight className="h-3.5 w-3.5" />
+                        Forward email
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setShowForwardPanel(false); setForwardToInput(""); setForwardAttachments([]); }}
+                        className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded"
+                        title="Close forward"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+
+                    {/* To field */}
+                    <div className="flex items-center gap-2 border border-border/70 rounded-lg px-3 py-2 bg-muted/20 focus-within:ring-1 focus-within:ring-ring">
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide shrink-0">To</span>
+                      <input
+                        type="text"
+                        value={forwardToInput}
+                        onChange={(e) => setForwardToInput(e.target.value)}
+                        placeholder="recipient@example.com"
+                        className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
+                        autoFocus
+                        required
+                      />
+                    </div>
+
+                    {/* Quoted message preview */}
+                    <div className="rounded-lg border border-border/60 bg-muted/10 p-3 text-xs text-muted-foreground font-mono leading-relaxed max-h-36 overflow-y-auto">
+                      <p className="text-muted-foreground/70 mb-1">---------- Forwarded message ----------</p>
+                      <p>From: {selectedThread.from.name ? `${selectedThread.from.name} <${selectedThread.from.email}>` : selectedThread.from.email}</p>
+                      <p>Subject: {selectedThread.subject}</p>
+                      <p className="mt-1 whitespace-pre-line line-clamp-3">{selectedThread.snippet}</p>
+                    </div>
+
+                    {/* Attached files list */}
+                    {forwardAttachments.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {forwardAttachments.map((file, i) => (
+                          <span
+                            key={i}
+                            className="inline-flex items-center gap-1 text-xs bg-muted border border-border/60 px-2 py-0.5 rounded-full"
+                          >
+                            <Paperclip className="h-3 w-3" />
+                            {file.name}
+                            <button
+                              type="button"
+                              onClick={() => setForwardAttachments((prev) => prev.filter((_, idx) => idx !== i))}
+                              className="ml-0.5 text-muted-foreground hover:text-destructive transition-colors"
+                            >
+                              <X className="h-2.5 w-2.5" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Hidden file input */}
+                    <input
+                      ref={forwardFileRef}
+                      type="file"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files) {
+                          setForwardAttachments((prev) => [...prev, ...Array.from(e.target.files!)]);
+                        }
+                        e.target.value = "";
+                      }}
+                    />
+
+                    {/* Footer actions */}
+                    <div className="flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => forwardFileRef.current?.click()}
+                        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <Paperclip className="h-3.5 w-3.5" /> Attach files
+                      </button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs"
+                          onClick={() => { setShowForwardPanel(false); setForwardToInput(""); setForwardAttachments([]); }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="submit"
+                          disabled={sendEmailMutation.isPending}
+                          size="sm"
+                          className="gap-1.5 text-xs shadow-sm"
+                        >
+                          <Send className="h-3.5 w-3.5" />{" "}
+                          {sendEmailMutation.isPending ? "Forwarding..." : "Forward"}
+                        </Button>
+                      </div>
+                    </div>
+                  </form>
+                </div>
+              )}
             </>
           ) : (
             <div className="flex-1 flex flex-col justify-center items-center text-center p-8 text-muted-foreground bg-muted/5">
