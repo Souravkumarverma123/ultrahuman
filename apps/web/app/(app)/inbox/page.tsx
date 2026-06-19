@@ -16,6 +16,7 @@ import {
   RefreshCw,
   X,
   Paperclip,
+  RotateCcw,
 } from "lucide-react";
 import { trpc } from "~/trpc/client";
 import { useTenant } from "~/hooks/use-tenant";
@@ -399,6 +400,32 @@ function InboxPageContent() {
     },
   });
 
+  const untrashMutation = trpc.gmail.untrashThread.useMutation({
+    onSettled: () => {
+      utils.gmail.listThreads.invalidate({ tenantId });
+    },
+  });
+
+  const deletePermanentlyMutation = trpc.gmail.deleteThreadPermanently.useMutation({
+    onMutate: async ({ threadId }) => {
+      await utils.gmail.listThreads.cancel({ tenantId, labelIds: ["TRASH"] });
+      const prev = utils.gmail.listThreads.getData({ tenantId, labelIds: ["TRASH"] });
+      utils.gmail.listThreads.setData({ tenantId, labelIds: ["TRASH"] }, (old) => {
+        if (!old) return old;
+        return { ...old, threads: old.threads.filter((t) => t.id !== threadId) };
+      });
+      return { prev };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prev) {
+        utils.gmail.listThreads.setData({ tenantId, labelIds: ["TRASH"] }, context.prev);
+      }
+    },
+    onSettled: () => {
+      utils.gmail.listThreads.invalidate({ tenantId, labelIds: ["TRASH"] });
+    },
+  });
+
   const threads = useMemo(() => threadsQuery.data?.threads ?? [], [threadsQuery.data?.threads]);
   const selectedThread = threadDetailQuery.data;
   const markThreadAsRead = markReadMutation.mutate;
@@ -607,16 +634,45 @@ function InboxPageContent() {
     }
 
     const lastMessage = selectedThread.messages?.[selectedThread.messages.length - 1];
-    const originalDate = lastMessage
-      ? new Date(lastMessage.receivedAt).toUTCString()
-      : "";
+    const originalDate = lastMessage ? new Date(lastMessage.receivedAt).toUTCString() : "";
     const originalFrom = lastMessage
-      ? `${lastMessage.from.name || lastMessage.from.email} <${lastMessage.from.email}>`
-      : `${selectedThread.from.name || selectedThread.from.email} <${selectedThread.from.email}>`;
+      ? `${lastMessage.from.name || lastMessage.from.email} &lt;${lastMessage.from.email}&gt;`
+      : `${selectedThread.from.name || selectedThread.from.email} &lt;${selectedThread.from.email}&gt;`;
     const originalTo = lastMessage
-      ? lastMessage.to.map((t) => `${t.name || t.email} <${t.email}>`).join(", ")
+      ? lastMessage.to.map((t) => `${t.name || t.email} &lt;${t.email}&gt;`).join(", ")
       : "";
-    const quotedBody = `\n\n---------- Forwarded message ----------\nFrom: ${originalFrom}\nDate: ${originalDate}\nSubject: ${selectedThread.subject}\nTo: ${originalTo}\n\n${lastMessage?.body || selectedThread.snippet}`;
+
+    const isHtml = lastMessage?.isHtml ?? false;
+    const originalBody = lastMessage?.body || selectedThread.snippet;
+
+    let quotedBody: string;
+
+    if (isHtml) {
+      // Wrap the original HTML email inside a proper HTML forward template
+      quotedBody = `<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;font-size:14px;color:#111;">
+  <div style="margin-bottom:16px;color:#555;font-size:13px;border-left:3px solid #ccc;padding-left:12px;">
+    <p style="margin:4px 0;"><strong>---------- Forwarded message ----------</strong></p>
+    <p style="margin:4px 0;"><strong>From:</strong> ${originalFrom}</p>
+    <p style="margin:4px 0;"><strong>Date:</strong> ${originalDate}</p>
+    <p style="margin:4px 0;"><strong>Subject:</strong> ${selectedThread.subject}</p>
+    <p style="margin:4px 0;"><strong>To:</strong> ${originalTo}</p>
+  </div>
+  <div>${originalBody}</div>
+</body>
+</html>`;
+    } else {
+      // Plain text forward
+      const plainFrom = lastMessage
+        ? `${lastMessage.from.name || lastMessage.from.email} <${lastMessage.from.email}>`
+        : `${selectedThread.from.name || selectedThread.from.email} <${selectedThread.from.email}>`;
+      const plainTo = lastMessage
+        ? lastMessage.to.map((t) => `${t.name || t.email} <${t.email}>`).join(", ")
+        : "";
+      quotedBody = `\n\n---------- Forwarded message ----------\nFrom: ${plainFrom}\nDate: ${originalDate}\nSubject: ${selectedThread.subject}\nTo: ${plainTo}\n\n${originalBody}`;
+    }
 
     sendEmailMutation.mutate(
       {
@@ -626,6 +682,7 @@ function InboxPageContent() {
           ? selectedThread.subject
           : `Fwd: ${selectedThread.subject}`,
         body: quotedBody,
+        isHtml,
       },
       {
         onSuccess: () => {
@@ -956,75 +1013,126 @@ function InboxPageContent() {
                   >
                     <X className="h-4 w-4" />
                   </Button>
-                  <Button
-                    onClick={() => {
-                      const currentId = selectedThread.id;
-                      setSelectedThreadId(null);
-                      archiveMutation.mutate(
-                        { tenantId, threadId: currentId },
-                        {
-                          onSuccess: () => {
-                            toast.success("Thread archived");
-                          },
-                          onError: (err) => {
-                            setSelectedThreadId(currentId);
-                            toast.error(`Failed to archive: ${err.message}`);
-                          },
-                        },
-                      );
-                    }}
-                    variant="outline"
-                    size="sm"
-                    className="gap-1 text-xs"
-                  >
-                    <Archive className="h-4 w-4" /> Archive{" "}
-                    <kbd className="text-[10px] opacity-40">e</kbd>
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      const currentId = selectedThread.id;
-                      setSelectedThreadId(null);
-                      trashMutation.mutate(
-                        { tenantId, threadId: currentId },
-                        {
-                          onSuccess: () => {
-                            toast.success("Moved to Trash");
-                          },
-                          onError: (err) => {
-                            setSelectedThreadId(currentId);
-                            toast.error(`Failed to move to Trash: ${err.message}`);
-                          },
-                        },
-                      );
-                    }}
-                    variant="outline"
-                    size="sm"
-                    className="gap-1 text-xs"
-                  >
-                    <Trash2 className="h-4 w-4" /> Trash
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setShowReplyPanel((prev) => !prev);
-                      setShowForwardPanel(false);
-                    }}
-                    variant={showReplyPanel ? "default" : "outline"}
-                    size="sm"
-                    className="gap-1 text-xs"
-                  >
-                    <CornerUpLeft className="h-4 w-4" /> Reply
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setShowForwardPanel((prev) => !prev);
-                      setShowReplyPanel(false);
-                    }}
-                    variant={showForwardPanel ? "default" : "outline"}
-                    size="sm"
-                    className="gap-1 text-xs"
-                  >
-                    <CornerUpRight className="h-4 w-4" /> Forward
-                  </Button>
+                  {/* ── Toolbar: context-aware based on active folder ── */}
+                  {activeFolder === "TRASH" ? (
+                    // Trash-specific actions
+                    <>
+                      <Button
+                        onClick={() => {
+                          const currentId = selectedThread.id;
+                          setSelectedThreadId(null);
+                          untrashMutation.mutate(
+                            { tenantId, threadId: currentId },
+                            {
+                              onSuccess: () => toast.success("Restored to Inbox"),
+                              onError: (err) => {
+                                setSelectedThreadId(currentId);
+                                toast.error(`Failed to restore: ${err.message}`);
+                              },
+                            },
+                          );
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className="gap-1 text-xs"
+                        disabled={untrashMutation.isPending}
+                      >
+                        <RotateCcw className="h-4 w-4" /> Restore to Inbox
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          if (!confirm("Permanently delete this email? This cannot be undone.")) return;
+                          const currentId = selectedThread.id;
+                          setSelectedThreadId(null);
+                          deletePermanentlyMutation.mutate(
+                            { tenantId, threadId: currentId },
+                            {
+                              onSuccess: () => toast.success("Email permanently deleted"),
+                              onError: (err) => {
+                                setSelectedThreadId(currentId);
+                                toast.error(`Failed to delete: ${err.message}`);
+                              },
+                            },
+                          );
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className="gap-1 text-xs text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                        disabled={deletePermanentlyMutation.isPending}
+                      >
+                        <Trash2 className="h-4 w-4" /> Delete Permanently
+                      </Button>
+                    </>
+                  ) : (
+                    // Normal folder actions
+                    <>
+                      <Button
+                        onClick={() => {
+                          const currentId = selectedThread.id;
+                          setSelectedThreadId(null);
+                          archiveMutation.mutate(
+                            { tenantId, threadId: currentId },
+                            {
+                              onSuccess: () => toast.success("Thread archived"),
+                              onError: (err) => {
+                                setSelectedThreadId(currentId);
+                                toast.error(`Failed to archive: ${err.message}`);
+                              },
+                            },
+                          );
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className="gap-1 text-xs"
+                      >
+                        <Archive className="h-4 w-4" /> Archive{" "}
+                        <kbd className="text-[10px] opacity-40">e</kbd>
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          const currentId = selectedThread.id;
+                          setSelectedThreadId(null);
+                          trashMutation.mutate(
+                            { tenantId, threadId: currentId },
+                            {
+                              onSuccess: () => toast.success("Moved to Trash"),
+                              onError: (err) => {
+                                setSelectedThreadId(currentId);
+                                toast.error(`Failed to move to Trash: ${err.message}`);
+                              },
+                            },
+                          );
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className="gap-1 text-xs"
+                      >
+                        <Trash2 className="h-4 w-4" /> Trash
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setShowReplyPanel((prev) => !prev);
+                          setShowForwardPanel(false);
+                        }}
+                        variant={showReplyPanel ? "default" : "outline"}
+                        size="sm"
+                        className="gap-1 text-xs"
+                      >
+                        <CornerUpLeft className="h-4 w-4" /> Reply
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setShowForwardPanel((prev) => !prev);
+                          setShowReplyPanel(false);
+                        }}
+                        variant={showForwardPanel ? "default" : "outline"}
+                        size="sm"
+                        className="gap-1 text-xs"
+                      >
+                        <CornerUpRight className="h-4 w-4" /> Forward
+                      </Button>
+                    </>
+                  )}
                 </div>
 
                 {aiPriorities[selectedThread.id] && (

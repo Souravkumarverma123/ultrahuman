@@ -3,6 +3,7 @@ import { corsair } from "@repo/services/corsair";
 import { router, tenantProcedure } from "../../trpc";
 import { generatePath } from "../../utils/path-generator";
 import { BaseCorsairRouter } from "../../factories/corsair-router.factory";
+import { TRPCError } from "@trpc/server";
 import type {} from "express-serve-static-core";
 
 const TAGS = ["Gmail"];
@@ -217,6 +218,7 @@ function buildMimeMessage(opts: {
   bcc?: string[];
   subject: string;
   body: string;
+  isHtml?: boolean;
   replyToMessageId?: string;
 }): string {
   const date = new Date().toUTCString(); // RFC 2822 date
@@ -231,9 +233,13 @@ function buildMimeMessage(opts: {
     lines.push(`In-Reply-To: ${opts.replyToMessageId}`);
     lines.push(`References: ${opts.replyToMessageId}`);
   }
-  // Standard MIME headers required for a valid .eml file
+  // Standard MIME headers — use text/html when body contains HTML markup
   lines.push(`MIME-Version: 1.0`);
-  lines.push(`Content-Type: text/plain; charset="UTF-8"`);
+  if (opts.isHtml) {
+    lines.push(`Content-Type: text/html; charset="UTF-8"`);
+  } else {
+    lines.push(`Content-Type: text/plain; charset="UTF-8"`);
+  }
   lines.push(`Content-Transfer-Encoding: 7bit`);
   // Blank line separates headers from body (RFC 2822 §2.1)
   lines.push(``);
@@ -345,6 +351,7 @@ export const gmailRouter = router({
         bcc: z.array(z.string()).optional(),
         subject: z.string(),
         body: z.string(),
+        isHtml: z.boolean().optional(), // true when body contains HTML markup
         replyToMessageId: z.string().optional(),
         replyToThreadId: z.string().optional(),
       }),
@@ -360,6 +367,7 @@ export const gmailRouter = router({
         bcc: input.bcc,
         subject: input.subject,
         body: input.body,
+        isHtml: input.isHtml,
         replyToMessageId: input.replyToMessageId,
       });
       const raw = Buffer.from(mimeMessage).toString("base64url");
@@ -472,4 +480,41 @@ export const gmailRouter = router({
       });
       return { success: true };
     }),
+
+  // Restore a thread from Trash back to Inbox
+  untrashThread: tenantProcedure
+    .meta({ openapi: { method: "POST", path: getPath("/threads/:threadId/untrash"), tags: TAGS } })
+    .input(z.object({ tenantId: z.string(), threadId: z.string() }))
+    .output(z.object({ success: z.boolean() }))
+    .mutation(async ({ input, ctx }) => {
+      const client = corsair.withTenant(ctx.session.user.id);
+      await client.gmail.api.threads.untrash({
+        id: input.threadId,
+      });
+      return { success: true };
+    }),
+
+  // Permanently delete a thread (irreversible — bypasses Trash)
+  deleteThreadPermanently: tenantProcedure
+    .meta({ openapi: { method: "DELETE", path: getPath("/threads/:threadId"), tags: TAGS } })
+    .input(z.object({ tenantId: z.string(), threadId: z.string() }))
+    .output(z.object({ success: z.boolean() }))
+    .mutation(async ({ input, ctx }) => {
+      const client = corsair.withTenant(ctx.session.user.id);
+      try {
+        await client.gmail.api.threads.delete({
+          id: input.threadId,
+        });
+        return { success: true };
+      } catch (error: any) {
+        console.error("Failed to permanently delete thread:", error);
+        
+        // Throw a specific error explaining the OAuth scope requirement
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Permanent deletion requires the full 'https://mail.google.com/' scope. Please verify that this scope is enabled on your Google Cloud Console OAuth consent screen and re-connect your integration.",
+        });
+      }
+    }),
 });
+
