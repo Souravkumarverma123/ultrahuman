@@ -17,6 +17,8 @@ import {
   X,
   Paperclip,
   RotateCcw,
+  FilePen,
+  PenLine,
 } from "lucide-react";
 import { trpc } from "~/trpc/client";
 import { useTenant } from "~/hooks/use-tenant";
@@ -47,7 +49,7 @@ import { formatDistanceToNow } from "date-fns";
 
 import { useSearchParams } from "next/navigation";
 
-type Folder = "INBOX" | "STARRED" | "SENT" | "ARCHIVE" | "TRASH";
+type Folder = "INBOX" | "STARRED" | "SENT" | "DRAFT" | "ARCHIVE" | "TRASH";
 
 function buildEmailSrcDoc(html: string, frameId: string) {
   return `<!doctype html>
@@ -130,6 +132,11 @@ function InboxPageContent() {
   const [forwardAttachments, setForwardAttachments] = useState<File[]>([]);
   const forwardFileRef = useRef<HTMLInputElement>(null);
 
+  // Draft-specific state
+  const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null);
+  const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
+  const [showSaveDraftDialog, setShowSaveDraftDialog] = useState(false);
+
   // Initialize selectedThreadId from searchParams if present
   useEffect(() => {
     const threadId = searchParams.get("threadId");
@@ -184,6 +191,47 @@ function InboxPageContent() {
   );
 
   const utils = trpc.useUtils();
+
+  // ── Draft queries & mutations ────────────────────────────────────────────────
+  const draftsQuery = trpc.gmail.listDrafts.useQuery(
+    { tenantId },
+    { enabled: isConnected && activeFolder === "DRAFT", refetchInterval: 30000 },
+  );
+
+  const selectedDraftQuery = trpc.gmail.getDraft.useQuery(
+    { tenantId, draftId: selectedDraftId ?? "" },
+    { enabled: isConnected && activeFolder === "DRAFT" && selectedDraftId !== null },
+  );
+
+  const createDraftMutation = trpc.gmail.createDraft.useMutation({
+    onSettled: () => utils.gmail.listDrafts.invalidate({ tenantId }),
+  });
+
+  const updateDraftMutation = trpc.gmail.updateDraft.useMutation({
+    onSettled: () => utils.gmail.listDrafts.invalidate({ tenantId }),
+  });
+
+  const deleteDraftMutation = trpc.gmail.deleteDraft.useMutation({
+    onMutate: async ({ draftId }) => {
+      const prev = utils.gmail.listDrafts.getData({ tenantId });
+      utils.gmail.listDrafts.setData({ tenantId }, (old) => {
+        if (!old) return old;
+        return { ...old, drafts: old.drafts.filter((d) => d.id !== draftId) };
+      });
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) utils.gmail.listDrafts.setData({ tenantId }, ctx.prev);
+    },
+    onSettled: () => utils.gmail.listDrafts.invalidate({ tenantId }),
+  });
+
+  const sendDraftMutation = trpc.gmail.sendDraft.useMutation({
+    onSettled: () => {
+      utils.gmail.listDrafts.invalidate({ tenantId });
+      utils.gmail.listThreads.invalidate({ tenantId });
+    },
+  });
 
   // Mutations
   const sendEmailMutation = trpc.gmail.sendEmail.useMutation();
@@ -578,27 +626,108 @@ function InboxPageContent() {
       return;
     }
 
-    sendEmailMutation.mutate(
-      {
-        tenantId,
-        to: toInput.split(",").map((s) => s.trim()),
-        subject: subjectInput,
-        body: bodyInput,
-      },
-      {
-        onSuccess: () => {
-          toast.success("Email sent successfully!");
-          setComposeOpen(false);
-          setToInput("");
-          setSubjectInput("");
-          setBodyInput("");
-          threadsQuery.refetch();
+    if (editingDraftId) {
+      // Send the existing draft directly
+      sendDraftMutation.mutate(
+        { tenantId, draftId: editingDraftId },
+        {
+          onSuccess: () => {
+            toast.success("Draft sent successfully!");
+            setComposeOpen(false);
+            setEditingDraftId(null);
+            setToInput("");
+            setSubjectInput("");
+            setBodyInput("");
+            setSelectedDraftId(null);
+          },
+          onError: () => {
+            // Fallback: send as new email
+            sendEmailMutation.mutate(
+              { tenantId, to: toInput.split(",").map((s) => s.trim()), subject: subjectInput, body: bodyInput },
+              {
+                onSuccess: () => {
+                  toast.success("Email sent!");
+                  setComposeOpen(false);
+                  setEditingDraftId(null);
+                  setToInput("");
+                  setSubjectInput("");
+                  setBodyInput("");
+                },
+                onError: (err) => toast.error(`Error sending: ${err.message}`),
+              },
+            );
+          },
         },
-        onError: (err) => {
-          toast.error(`Error sending email: ${err.message}`);
+      );
+    } else {
+      sendEmailMutation.mutate(
+        {
+          tenantId,
+          to: toInput.split(",").map((s) => s.trim()),
+          subject: subjectInput,
+          body: bodyInput,
         },
-      },
-    );
+        {
+          onSuccess: () => {
+            toast.success("Email sent successfully!");
+            setComposeOpen(false);
+            setToInput("");
+            setSubjectInput("");
+            setBodyInput("");
+            threadsQuery.refetch();
+          },
+          onError: (err) => {
+            toast.error(`Error sending email: ${err.message}`);
+          },
+        },
+      );
+    }
+  };
+
+  const handleSaveDraft = () => {
+    if (!toInput && !subjectInput && !bodyInput) return;
+    if (editingDraftId) {
+      updateDraftMutation.mutate(
+        { tenantId, draftId: editingDraftId, to: toInput.split(",").map((s) => s.trim()), subject: subjectInput, body: bodyInput },
+        {
+          onSuccess: () => toast.success("Draft updated!"),
+          onError: (err) => toast.error(`Failed to update draft: ${err.message}`),
+        },
+      );
+    } else {
+      createDraftMutation.mutate(
+        { tenantId, to: toInput.split(",").map((s) => s.trim()), subject: subjectInput || "(no subject)", body: bodyInput },
+        {
+          onSuccess: () => toast.success("Saved to Drafts!"),
+          onError: (err) => toast.error(`Failed to save draft: ${err.message}`),
+        },
+      );
+    }
+    setComposeOpen(false);
+    setEditingDraftId(null);
+    setToInput("");
+    setSubjectInput("");
+    setBodyInput("");
+  };
+
+  const handleComposeClose = (open: boolean) => {
+    if (!open && (toInput || subjectInput || bodyInput)) {
+      // Ask user before discarding
+      setShowSaveDraftDialog(true);
+    } else if (!open) {
+      setComposeOpen(false);
+      setEditingDraftId(null);
+    } else {
+      setComposeOpen(true);
+    }
+  };
+
+  const openDraftInCompose = (draft: { id: string; to: string; subject: string; body: string }) => {
+    setEditingDraftId(draft.id);
+    setToInput(draft.to);
+    setSubjectInput(draft.subject);
+    setBodyInput(draft.body);
+    setComposeOpen(true);
   };
 
   const handleReplySubmit = (e: React.FormEvent) => {
@@ -834,6 +963,26 @@ function InboxPageContent() {
             </button>
             <button
               onClick={() => {
+                setActiveFolder("DRAFT");
+                setSelectedThreadId(null);
+                setSelectedDraftId(null);
+              }}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
+                activeFolder === "DRAFT"
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+              }`}
+            >
+              <FilePen className="h-4.5 w-4.5" />
+              <span>Drafts</span>
+              {(draftsQuery.data?.drafts.length ?? 0) > 0 && activeFolder !== "DRAFT" && (
+                <span className="ml-auto text-[10px] bg-muted px-1.5 py-0.5 rounded-full font-mono">
+                  {draftsQuery.data?.drafts.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => {
                 setActiveFolder("ARCHIVE");
                 setSelectedThreadId(null);
               }}
@@ -878,9 +1027,9 @@ function InboxPageContent() {
         </div>
       </div>
 
-      {/* 2. Threads List (Middle Panel) */}
+      {/* 2. Threads / Drafts List (Middle Panel) */}
       <div
-        className={`border-r border-border bg-card/40 flex flex-col h-full overflow-hidden transition-all duration-300 ${selectedThreadId ? "w-96 shrink-0" : "flex-1"}`}
+        className={`border-r border-border bg-card/40 flex flex-col h-full overflow-hidden transition-all duration-300 ${(activeFolder === "DRAFT" ? selectedDraftId : selectedThreadId) ? "w-96 shrink-0" : "flex-1"}`}
       >
         {/* Search Header */}
         <div className="p-3 border-b border-border flex gap-2 bg-card/60">
@@ -888,23 +1037,61 @@ function InboxPageContent() {
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="text"
-              placeholder="Search mail... (Cmd+K)"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={activeFolder === "DRAFT" ? "Drafts" : "Search mail... (Cmd+K)"}
+              value={activeFolder === "DRAFT" ? "" : searchQuery}
+              onChange={(e) => activeFolder !== "DRAFT" && setSearchQuery(e.target.value)}
+              readOnly={activeFolder === "DRAFT"}
               className="pl-9 bg-muted/40 border-border/80 text-sm focus-visible:ring-1 focus-visible:ring-ring"
             />
           </div>
           <Button
-            onClick={() => threadsQuery.refetch()}
+            onClick={() => activeFolder === "DRAFT" ? draftsQuery.refetch() : threadsQuery.refetch()}
             variant="outline"
             size="icon"
             className="h-9 w-9"
           >
-            <RefreshCw className={`h-4 w-4 ${threadsQuery.isFetching ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-4 w-4 ${(activeFolder === "DRAFT" ? draftsQuery.isFetching : threadsQuery.isFetching) ? "animate-spin" : ""}`} />
           </Button>
         </div>
 
-        {/* List of threads */}
+        {/* List of drafts (when in DRAFT folder) */}
+        {activeFolder === "DRAFT" ? (
+          <div className="flex-1 overflow-y-auto divide-y divide-border/60">
+            {draftsQuery.isLoading ? (
+              <div className="p-4 text-center text-sm text-muted-foreground">Loading drafts...</div>
+            ) : (draftsQuery.data?.drafts ?? []).length === 0 ? (
+              <div className="p-8 text-center space-y-3 text-sm text-muted-foreground">
+                <FilePen className="h-10 w-10 mx-auto opacity-30" />
+                <p>No drafts yet. Start composing!</p>
+              </div>
+            ) : (
+              (draftsQuery.data?.drafts ?? []).map((draft) => {
+                const isSelected = draft.id === selectedDraftId;
+                return (
+                  <div
+                    key={draft.id}
+                    onClick={() => setSelectedDraftId(draft.id)}
+                    className={`p-3.5 cursor-pointer transition-all flex flex-col gap-1.5 ${
+                      isSelected ? "bg-muted/65 border-l-2 border-primary" : "hover:bg-muted/20"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm truncate pr-2 max-w-[180px] text-muted-foreground italic">
+                        {draft.to || "No recipient"}
+                      </span>
+                      <span className="text-xs text-muted-foreground font-normal shrink-0">
+                        {formatDistanceToNow(new Date(draft.updatedAt), { addSuffix: false })}
+                      </span>
+                    </div>
+                    <span className="text-xs font-medium text-foreground/90 truncate">{draft.subject}</span>
+                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{draft.snippet}</p>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        ) : (
+        /* List of threads */
         <div className="flex-1 overflow-y-auto divide-y divide-border/60">
           {threadsQuery.isLoading ? (
             <div className="p-4 text-center text-sm text-muted-foreground">Loading threads...</div>
@@ -1000,10 +1187,122 @@ function InboxPageContent() {
             })
           )}
         </div>
+        )}
       </div>
 
-      {/* 3. Thread Reading & Detail (Right Panel) */}
-      {selectedThreadId !== null && (
+      {/* 3a. Draft Reading Pane */}
+      {activeFolder === "DRAFT" && selectedDraftId !== null && (
+        <div className="flex-1 bg-card flex flex-col h-full overflow-hidden border-l border-border">
+          {selectedDraftQuery.isLoading ? (
+            <div className="flex-1 flex flex-col justify-center items-center text-center p-8 text-muted-foreground bg-muted/5">
+              <RefreshCw className="h-8 w-8 animate-spin text-primary mb-3" />
+              <p className="text-sm font-medium">Loading draft...</p>
+            </div>
+          ) : selectedDraftQuery.data ? (
+            <>
+              <div className="p-3 border-b border-border flex items-center justify-between bg-muted/10">
+                <button
+                  onClick={() => setSelectedDraftId(null)}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1 text-xs"
+                    onClick={() => {
+                      const d = selectedDraftQuery.data!;
+                      openDraftInCompose({ id: d.id, to: d.to, subject: d.subject, body: d.body });
+                    }}
+                  >
+                    <PenLine className="h-3.5 w-3.5" /> Edit Draft
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="gap-1 text-xs"
+                    disabled={sendDraftMutation.isPending}
+                    onClick={() => {
+                      sendDraftMutation.mutate(
+                        { tenantId, draftId: selectedDraftId },
+                        {
+                          onSuccess: () => {
+                            toast.success("Draft sent!");
+                            setSelectedDraftId(null);
+                          },
+                          onError: (err) => toast.error(`Failed to send: ${err.message}`),
+                        },
+                      );
+                    }}
+                  >
+                    <Send className="h-3.5 w-3.5" /> {sendDraftMutation.isPending ? "Sending..." : "Send"}
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1 text-xs text-destructive border-destructive/40 hover:bg-destructive/10"
+                        disabled={deleteDraftMutation.isPending}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" /> Discard
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="bg-black border border-border/80 text-foreground shadow-2xl">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Discard this draft?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-muted-foreground">
+                          This draft will be permanently deleted and cannot be recovered.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel className="bg-transparent border border-border/80 hover:bg-muted/10 text-foreground">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          onClick={() => {
+                            deleteDraftMutation.mutate(
+                              { tenantId, draftId: selectedDraftId },
+                              {
+                                onSuccess: () => {
+                                  toast.success("Draft discarded.");
+                                  setSelectedDraftId(null);
+                                },
+                                onError: (err) => toast.error(`Failed to discard: ${err.message}`),
+                              },
+                            );
+                          }}
+                        >
+                          Discard Draft
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
+              <div className="p-6 flex-1 overflow-y-auto space-y-4">
+                <h2 className="text-xl font-bold tracking-tight">{selectedDraftQuery.data.subject}</h2>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">To:</span>
+                  <span>{selectedDraftQuery.data.to || "(no recipient)"}</span>
+                </div>
+                <div className="border-t border-border/60 pt-4">
+                  <p className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
+                    {selectedDraftQuery.data.body || selectedDraftQuery.data.snippet || "(empty draft)"}
+                  </p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex flex-col justify-center items-center p-8 text-muted-foreground">
+              <p className="text-sm">Draft could not be loaded.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 3b. Thread Reading & Detail (Right Panel) */}
+      {activeFolder !== "DRAFT" && selectedThreadId !== null && (
         <div className="flex-1 bg-card flex flex-col h-full overflow-hidden border-l border-border">
           {threadDetailQuery.isLoading ? (
             <div className="flex-1 flex flex-col justify-center items-center text-center p-8 text-muted-foreground bg-muted/5">
@@ -1399,11 +1698,15 @@ function InboxPageContent() {
       )}
 
       {/* Floating Compose Dialog */}
-      <Dialog open={composeOpen} onOpenChange={setComposeOpen}>
+      <Dialog open={composeOpen} onOpenChange={handleComposeClose}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Plus className="h-5 w-5 text-primary" /> New Message
+              {editingDraftId ? (
+                <><FilePen className="h-5 w-5 text-primary" /> Edit Draft</>
+              ) : (
+                <><Plus className="h-5 w-5 text-primary" /> New Message</>
+              )}
             </DialogTitle>
           </DialogHeader>
 
@@ -1415,7 +1718,6 @@ function InboxPageContent() {
                 placeholder="recipients@example.com (comma separated)"
                 value={toInput}
                 onChange={(e) => setToInput(e.target.value)}
-                required
                 className="text-sm bg-muted/20"
               />
             </div>
@@ -1429,7 +1731,6 @@ function InboxPageContent() {
                 placeholder="Enter subject line"
                 value={subjectInput}
                 onChange={(e) => setSubjectInput(e.target.value)}
-                required
                 className="text-sm bg-muted/20"
               />
             </div>
@@ -1440,27 +1741,76 @@ function InboxPageContent() {
                 placeholder="Write your email here..."
                 value={bodyInput}
                 onChange={(e) => setBodyInput(e.target.value)}
-                required
                 className="min-h-[200px] text-sm bg-muted/20 resize-none"
               />
             </div>
 
-            <DialogFooter className="pt-2">
-              <Button type="button" variant="outline" onClick={() => setComposeOpen(false)}>
+            <DialogFooter className="pt-2 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleComposeClose(false)}
+              >
                 Cancel
               </Button>
               <Button
+                type="button"
+                variant="outline"
+                className="gap-1.5"
+                disabled={createDraftMutation.isPending || updateDraftMutation.isPending}
+                onClick={handleSaveDraft}
+              >
+                <FilePen className="h-4 w-4" />
+                {editingDraftId ? "Update Draft" : "Save Draft"}
+              </Button>
+              <Button
                 type="submit"
-                disabled={sendEmailMutation.isPending}
+                disabled={sendEmailMutation.isPending || sendDraftMutation.isPending}
                 className="gap-1.5 shadow-sm"
               >
                 <Send className="h-4 w-4" />{" "}
-                {sendEmailMutation.isPending ? "Sending..." : "Send Message"}
+                {sendEmailMutation.isPending || sendDraftMutation.isPending ? "Sending..." : "Send Message"}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Auto-save draft AlertDialog (shown when closing compose with content) */}
+      <AlertDialog open={showSaveDraftDialog} onOpenChange={setShowSaveDraftDialog}>
+        <AlertDialogContent className="bg-black border border-border/80 text-foreground shadow-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-lg font-bold">Save to Drafts?</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-muted-foreground">
+              You have unsaved content. Would you like to save this email to your Drafts before closing?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel
+              className="bg-transparent border border-border/80 hover:bg-muted/10 text-foreground"
+              onClick={() => {
+                setShowSaveDraftDialog(false);
+                setComposeOpen(false);
+                setEditingDraftId(null);
+                setToInput("");
+                setSubjectInput("");
+                setBodyInput("");
+              }}
+            >
+              Discard
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={() => {
+                setShowSaveDraftDialog(false);
+                handleSaveDraft();
+              }}
+            >
+              <FilePen className="h-4 w-4 mr-1.5" /> Save to Drafts
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -138,10 +138,14 @@ export class AgentOrchestratorService {
     userId,
     message,
     model,
+    userEmail = "",
+    userName = "",
   }: {
     userId: string;
     message: string;
     model?: string;
+    userEmail?: string;
+    userName?: string;
   }): Promise<{ reply: string; toolsUsed: string[]; success: boolean }> {
     if (!process.env.OPENAI_API_KEY) {
       return {
@@ -213,6 +217,9 @@ export class AgentOrchestratorService {
       setup: false,
     });
 
+    // Fetch the user's own Gmail profile for self-addressing
+    // (already provided from the authenticated session — no API call needed)
+
     const tools: OpenAI.Chat.ChatCompletionTool[] = corsairTools.map((def) => ({
       type: "function",
       function: {
@@ -225,7 +232,7 @@ export class AgentOrchestratorService {
     const systemPrompt = `You are a strict, single-purpose automation orchestrator with access to the user's Gmail and Google Calendar via Corsair.
 
 Today's date is ${new Date().toISOString()}.
-
+${userEmail ? `\nCURRENT USER IDENTITY:\n- Name: ${userName || "the user"}\n- Email: ${userEmail}\n\nIMPORTANT: Whenever the user says "send an email to me", "send it to myself", "email me", "send to me", or any similar self-referencing phrase, use ${userEmail} as the recipient automatically. Never ask the user for their own email address.\n` : ""}
 CRITICAL DIRECTIVES:
 1. You are NOT a conversational companion or general knowledge LLM. You must ONLY perform automation tasks: searching Gmail, summarizing threads, drafting/sending replies, and managing calendar events/Google Meet invitations.
 2. If the user asks general questions, programming help, Q&A, or writing requests that are not direct email/calendar automations, you must refuse politely and concisely.

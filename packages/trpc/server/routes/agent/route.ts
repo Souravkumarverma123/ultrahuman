@@ -77,10 +77,14 @@ export const agentRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       const userId = ctx.session.user.id;
+      const userEmail = ctx.session.user.email ?? "";
+      const userName = ctx.session.user.name ?? "";
       return await agentOrchestratorService.chat({
         userId,
         message: input.message,
         model: input.model,
+        userEmail,
+        userName,
       });
     }),
 });

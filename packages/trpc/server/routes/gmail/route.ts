@@ -419,6 +419,152 @@ export const gmailRouter = router({
       };
     }),
 
+  // List all drafts
+  listDrafts: tenantProcedure
+    .meta({ openapi: { method: "GET", path: getPath("/drafts"), tags: TAGS } })
+    .input(
+      z.object({
+        tenantId: z.string(),
+        maxResults: z.number().optional().default(25),
+      }),
+    )
+    .output(
+      z.object({
+        drafts: z.array(
+          z.object({
+            id: z.string(),
+            subject: z.string(),
+            to: z.string(),
+            snippet: z.string(),
+            updatedAt: z.string(),
+          }),
+        ),
+      }),
+    )
+    .query(async ({ input, ctx }) => {
+      const client = corsair.withTenant(ctx.session.user.id);
+      const result = await client.gmail.api.drafts.list({
+        maxResults: input.maxResults,
+      });
+
+      const drafts = await Promise.all(
+        (result?.drafts ?? []).map(async (d: any) => {
+          try {
+            const full = await client.gmail.api.drafts.get({ id: d.id, format: "metadata" });
+            const headers = (full?.message?.payload?.headers ?? []) as { name?: string; value?: string }[];
+            const getHeader = (name: string) =>
+              headers.find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value ?? "";
+            return {
+              id: String(d.id),
+              subject: decodeHtmlEntities(getHeader("subject")) || "(no subject)",
+              to: getHeader("to") || "",
+              snippet: decodeHtmlEntities(String(full?.message?.snippet ?? "")),
+              updatedAt: full?.message?.internalDate
+                ? new Date(Number(full.message.internalDate)).toISOString()
+                : new Date().toISOString(),
+            };
+          } catch {
+            return {
+              id: String(d.id),
+              subject: "(no subject)",
+              to: "",
+              snippet: "",
+              updatedAt: new Date().toISOString(),
+            };
+          }
+        }),
+      );
+
+      return { drafts };
+    }),
+
+  // Get a single draft's full content for editing
+  getDraft: tenantProcedure
+    .meta({ openapi: { method: "GET", path: getPath("/drafts/:draftId"), tags: TAGS } })
+    .input(z.object({ tenantId: z.string(), draftId: z.string() }))
+    .output(
+      z.object({
+        id: z.string(),
+        subject: z.string(),
+        to: z.string(),
+        body: z.string(),
+        snippet: z.string(),
+        updatedAt: z.string(),
+      }),
+    )
+    .query(async ({ input, ctx }) => {
+      const client = corsair.withTenant(ctx.session.user.id);
+      const full = await client.gmail.api.drafts.get({ id: input.draftId, format: "full" });
+      const headers = (full?.message?.payload?.headers ?? []) as { name?: string; value?: string }[];
+      const getHeader = (name: string) =>
+        headers.find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value ?? "";
+      const { html, text } = extractBody(full?.message?.payload);
+      const body = html || text || full?.message?.snippet || "";
+      return {
+        id: String(full?.id ?? input.draftId),
+        subject: decodeHtmlEntities(getHeader("subject")) || "(no subject)",
+        to: getHeader("to") || "",
+        body,
+        snippet: decodeHtmlEntities(String(full?.message?.snippet ?? "")),
+        updatedAt: full?.message?.internalDate
+          ? new Date(Number(full.message.internalDate)).toISOString()
+          : new Date().toISOString(),
+      };
+    }),
+
+  // Update an existing draft
+  updateDraft: tenantProcedure
+    .meta({ openapi: { method: "PUT", path: getPath("/drafts/:draftId"), tags: TAGS } })
+    .input(
+      z.object({
+        tenantId: z.string(),
+        draftId: z.string(),
+        to: z.array(z.string()),
+        subject: z.string(),
+        body: z.string(),
+      }),
+    )
+    .output(z.object({ draftId: z.string(), success: z.boolean() }))
+    .mutation(async ({ input, ctx }) => {
+      const client = corsair.withTenant(ctx.session.user.id);
+      const mimeMessage = buildMimeMessage({
+        to: input.to,
+        subject: input.subject,
+        body: input.body,
+      });
+      const result = await client.gmail.api.drafts.update({
+        id: input.draftId,
+        draft: {
+          message: {
+            raw: Buffer.from(mimeMessage).toString("base64url"),
+          },
+        },
+      });
+      return { draftId: String(result?.id ?? input.draftId), success: true };
+    }),
+
+  // Delete a draft
+  deleteDraft: tenantProcedure
+    .meta({ openapi: { method: "DELETE", path: getPath("/drafts/:draftId"), tags: TAGS } })
+    .input(z.object({ tenantId: z.string(), draftId: z.string() }))
+    .output(z.object({ success: z.boolean() }))
+    .mutation(async ({ input, ctx }) => {
+      const client = corsair.withTenant(ctx.session.user.id);
+      await client.gmail.api.drafts.delete({ id: input.draftId });
+      return { success: true };
+    }),
+
+  // Send a saved draft
+  sendDraft: tenantProcedure
+    .meta({ openapi: { method: "POST", path: getPath("/drafts/:draftId/send"), tags: TAGS } })
+    .input(z.object({ tenantId: z.string(), draftId: z.string() }))
+    .output(z.object({ messageId: z.string(), success: z.boolean() }))
+    .mutation(async ({ input, ctx }) => {
+      const client = corsair.withTenant(ctx.session.user.id);
+      const result = await client.gmail.api.drafts.send({ id: input.draftId });
+      return { messageId: String(result?.id ?? ""), success: true };
+    }),
+
   // Archive a thread (remove from INBOX)
   archiveThread: tenantProcedure
     .meta({ openapi: { method: "POST", path: getPath("/threads/:threadId/archive"), tags: TAGS } })
