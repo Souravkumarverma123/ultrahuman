@@ -11,7 +11,6 @@ import {
   Send as SendIcon,
   FileText,
   X,
-  Pencil,
 } from "lucide-react";
 import { trpc } from "~/trpc/client";
 import { useTenant } from "~/hooks/use-tenant";
@@ -31,6 +30,20 @@ interface EmailDraft {
   to: string;
   subject: string;
   body: string;
+}
+
+/** Check if message content contains a completed email action marker */
+function parseEmailAction(content: string): { action: "sent" | "drafted"; to: string; subject: string } | null {
+  const sentMatch = content.match(/%%EMAIL_SENT%%({.*?})%%END_SENT%%/s);
+  const draftedMatch = content.match(/%%EMAIL_DRAFTED%%({.*?})%%END_DRAFTED%%/s);
+  const match = sentMatch || draftedMatch;
+  if (!match?.[1]) return null;
+  try {
+    const data = JSON.parse(match[1]) as { to: string; subject: string };
+    return { action: sentMatch ? "sent" : "drafted", ...data };
+  } catch {
+    return null;
+  }
 }
 
 /** Parse %%EMAIL_DRAFT%% ... %%END_DRAFT%% from assistant reply */
@@ -90,18 +103,20 @@ function parseContentWithLinks(content: string) {
   return parts.length > 0 ? parts : content;
 }
 
-/** Inline email draft preview card with Edit / Send / Save as Draft actions */
 function EmailDraftCard({
   draft,
+  messageId,
   onDismiss,
+  onActioned,
 }: {
   draft: EmailDraft;
+  messageId: string;
   onDismiss: () => void;
+  onActioned: (messageId: string, action: "sent" | "drafted", details: { to: string; subject: string; body: string }) => void;
 }) {
   const { tenantId } = useTenant();
   const [sent, setSent] = useState(false);
   const [drafted, setDrafted] = useState(false);
-  const [editing, setEditing] = useState(false);
 
   // Editable copies of the fields
   const [editTo, setEditTo] = useState(draft.to);
@@ -112,7 +127,7 @@ function EmailDraftCard({
     onSuccess: () => {
       toast.success("Email sent successfully!");
       setSent(true);
-      setEditing(false);
+      onActioned(messageId, "sent", { to: editTo, subject: editSubject, body: editBody });
     },
     onError: (err) => toast.error(`Failed to send: ${err.message}`),
   });
@@ -121,7 +136,7 @@ function EmailDraftCard({
     onSuccess: () => {
       toast.success("Saved to Drafts in Gmail!");
       setDrafted(true);
-      setEditing(false);
+      onActioned(messageId, "drafted", { to: editTo, subject: editSubject, body: editBody });
     },
     onError: (err) => toast.error(`Failed to save draft: ${err.message}`),
   });
@@ -134,137 +149,144 @@ function EmailDraftCard({
       <div className="flex items-center justify-between px-4 py-2.5 bg-muted/50 border-b border-border">
         <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <Mail className="h-4 w-4 text-primary" />
-          {editing ? "Edit Email" : "AI-Composed Email Draft"}
+          AI-Composed Email Draft
         </div>
-        <div className="flex items-center gap-1">
-          {/* Edit / Cancel toggle */}
-          {!sent && !drafted && (
-            <button
-              onClick={() => setEditing((prev) => !prev)}
-              className={`flex items-center gap-1 text-xs px-2 py-1 rounded-md transition-colors ${
-                editing
-                  ? "text-muted-foreground hover:text-foreground"
-                  : "text-primary hover:bg-primary/10 font-medium"
-              }`}
-              title={editing ? "Cancel editing" : "Edit this draft"}
-            >
-              <Pencil className="h-3 w-3" />
-              {editing ? "Cancel" : "Edit"}
-            </button>
-          )}
-          <button
-            onClick={onDismiss}
-            className="text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded ml-1"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
+        <button
+          onClick={onDismiss}
+          className="text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
       </div>
 
-      {editing ? (
-        /* ── Edit mode ── */
+      {/* Interactive/Editable preview OR Locked/Sent preview */}
+      {sent || drafted ? (
+        <div className="px-4 py-3 space-y-2.5 text-sm opacity-80 select-none">
+          <div className="flex gap-2 border-b border-border/20 pb-2">
+            <span className="font-semibold text-muted-foreground w-14 shrink-0">To</span>
+            <span className="text-foreground/90 font-mono text-xs truncate">{editTo || "(no recipient)"}</span>
+          </div>
+          <div className="flex gap-2 border-b border-border/20 pb-2">
+            <span className="font-semibold text-muted-foreground w-14 shrink-0">Subject</span>
+            <span className="text-foreground/90 font-medium truncate">{editSubject || "(no subject)"}</span>
+          </div>
+          <div className="p-3.5 rounded-lg bg-card/40 border border-border/20 text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto font-mono">
+            {editBody || "(empty body)"}
+          </div>
+        </div>
+      ) : (
         <div className="px-4 pt-3 pb-1 space-y-3">
           {/* To */}
-          <div className="flex items-center gap-2 border border-border/70 rounded-lg px-3 py-2 bg-card focus-within:ring-1 focus-within:ring-ring">
+          <div className="flex items-center gap-2 border border-border/40 hover:border-border/80 focus-within:border-primary/50 rounded-lg px-3 py-2 bg-card/50 transition-colors focus-within:ring-1 focus-within:ring-primary/20">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide shrink-0 w-14">To</span>
             <input
               type="text"
               value={editTo}
               onChange={(e) => setEditTo(e.target.value)}
               placeholder="recipient@example.com"
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
+              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/30 text-foreground"
             />
           </div>
           {/* Subject */}
-          <div className="flex items-center gap-2 border border-border/70 rounded-lg px-3 py-2 bg-card focus-within:ring-1 focus-within:ring-ring">
+          <div className="flex items-center gap-2 border border-border/40 hover:border-border/80 focus-within:border-primary/50 rounded-lg px-3 py-2 bg-card/50 transition-colors focus-within:ring-1 focus-within:ring-primary/20">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide shrink-0 w-14">Subject</span>
             <input
               type="text"
               value={editSubject}
               onChange={(e) => setEditSubject(e.target.value)}
               placeholder="Subject"
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
+              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/30 text-foreground font-medium"
             />
           </div>
           {/* Body */}
-          <textarea
-            value={editBody}
-            onChange={(e) => setEditBody(e.target.value)}
-            rows={8}
-            className="w-full rounded-lg border border-border/70 bg-card px-3 py-2 text-sm text-foreground leading-relaxed resize-y outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/50"
-            placeholder="Email body..."
-          />
+          <div className="border border-border/40 hover:border-border/80 focus-within:border-primary/50 rounded-lg p-1 bg-card/50 transition-colors focus-within:ring-1 focus-within:ring-primary/20">
+            <textarea
+              value={editBody}
+              onChange={(e) => setEditBody(e.target.value)}
+              rows={7}
+              className="w-full bg-transparent px-2.5 py-2 text-sm text-foreground/90 leading-relaxed resize-y outline-none placeholder:text-muted-foreground/30"
+              placeholder="Email body..."
+            />
+          </div>
         </div>
-      ) : (
-        /* ── Read-only preview ── */
-        <>
-          <div className="px-4 pt-3 pb-1 space-y-1.5 text-sm">
-            <div className="flex gap-2">
-              <span className="font-semibold text-muted-foreground w-14 shrink-0">To</span>
-              <span className="text-foreground break-all">{editTo}</span>
-            </div>
-            <div className="flex gap-2">
-              <span className="font-semibold text-muted-foreground w-14 shrink-0">Subject</span>
-              <span className="text-foreground font-medium">{editSubject}</span>
-            </div>
-          </div>
-          <div className="mx-4 my-3 p-3 rounded-lg bg-card border border-border/60 text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto">
-            {editBody}
-          </div>
-        </>
       )}
 
       {/* Actions */}
       {!sent && !drafted ? (
-        editing ? (
-          /* Show send/draft buttons only in edit mode */
-          <div className="flex items-center justify-end gap-2 px-4 pb-3 pt-1">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={isBusy}
-              className="gap-1.5 text-xs"
-              onClick={() =>
-                createDraftMutation.mutate({
-                  tenantId,
-                  to: [editTo],
-                  subject: editSubject,
-                  body: editBody,
-                })
-              }
-            >
-              <FileText className="h-3.5 w-3.5" />
-              {createDraftMutation.isPending ? "Saving..." : "Save as Draft"}
-            </Button>
-            <Button
-              size="sm"
-              disabled={isBusy}
-              className="gap-1.5 text-xs shadow-sm"
-              onClick={() =>
-                sendEmailMutation.mutate({
-                  tenantId,
-                  to: [editTo],
-                  subject: editSubject,
-                  body: editBody,
-                })
-              }
-            >
-              <SendIcon className="h-3.5 w-3.5" />
-              {sendEmailMutation.isPending ? "Sending..." : "Send Email"}
-            </Button>
-          </div>
-        ) : (
-          /* In preview mode show a subtle hint */
-          <p className="px-4 pb-3 text-[11px] text-muted-foreground/70">
-            Click <strong>Edit</strong> to make changes before sending.
-          </p>
-        )
+        <div className="flex items-center justify-end gap-2 px-4 pb-3 pt-2 border-t border-border/20 mt-2 bg-muted/10">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={isBusy}
+            className="gap-1.5 text-xs h-8"
+            onClick={() =>
+              createDraftMutation.mutate({
+                tenantId,
+                to: [editTo],
+                subject: editSubject,
+                body: editBody,
+              })
+            }
+          >
+            <FileText className="h-3.5 w-3.5" />
+            {createDraftMutation.isPending ? "Saving..." : "Save as Draft"}
+          </Button>
+          <Button
+            size="sm"
+            disabled={isBusy}
+            className="gap-1.5 text-xs h-8 shadow-sm"
+            onClick={() =>
+              sendEmailMutation.mutate({
+                tenantId,
+                to: [editTo],
+                subject: editSubject,
+                body: editBody,
+              })
+            }
+          >
+            <SendIcon className="h-3.5 w-3.5" />
+            {sendEmailMutation.isPending ? "Sending..." : "Send Email"}
+          </Button>
+        </div>
       ) : (
-        <div className="flex items-center gap-2 px-4 pb-3 text-sm text-emerald-600 font-medium">
+        <div className="flex items-center gap-2 px-4 py-3 text-sm text-emerald-600 font-medium bg-emerald-500/5 border-t border-emerald-500/10 mt-2">
           <CheckCircle2 className="h-4 w-4" />
           {sent ? "Email sent!" : "Saved to Gmail Drafts!"}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Compact status banner for emails that were already sent or saved */
+function EmailActionBanner({ action, to, subject }: { action: "sent" | "drafted"; to: string; subject: string }) {
+  const isSent = action === "sent";
+  return (
+    <div className={`mt-2 rounded-xl border overflow-hidden shadow-sm w-full min-w-[min(460px,100%)] ${
+      isSent
+        ? "border-emerald-500/30 bg-emerald-500/5"
+        : "border-blue-500/30 bg-blue-500/5"
+    }`}>
+      <div className={`flex items-center gap-3 px-4 py-3 ${
+        isSent ? "text-emerald-600" : "text-blue-600"
+      }`}>
+        <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${
+          isSent ? "bg-emerald-500/15" : "bg-blue-500/15"
+        }`}>
+          {isSent
+            ? <CheckCircle2 className="h-4 w-4" />
+            : <FileText className="h-4 w-4" />
+          }
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold">
+            {isSent ? "Email Sent" : "Saved to Gmail Drafts"}
+          </p>
+          <p className="text-xs opacity-75 truncate">
+            To: {to} · {subject}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -311,6 +333,31 @@ export default function ChatPage() {
     },
     onError: () => toast.error("Failed to clear chat history."),
   });
+
+  const updateMessageMutation = trpc.agent.updateMessage.useMutation();
+
+  /** Called when user sends or saves-as-draft. Replaces the draft block in the message with a completion marker. */
+  const handleEmailActioned = (messageId: string, action: "sent" | "drafted", details: { to: string; subject: string; body: string }) => {
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.id !== messageId) return m;
+        // Replace the draft block with a status marker
+        const marker = action === "sent"
+          ? `%%EMAIL_SENT%%${JSON.stringify({ to: details.to, subject: details.subject })}%%END_SENT%%`
+          : `%%EMAIL_DRAFTED%%${JSON.stringify({ to: details.to, subject: details.subject })}%%END_DRAFTED%%`;
+        const newContent = m.content.replace(/%%EMAIL_DRAFT%%[\s\S]*?%%END_DRAFT%%/, marker);
+        return { ...m, content: newContent };
+      }),
+    );
+    // Persist to DB
+    updateMessageMutation.mutate({
+      tenantId,
+      messageId,
+      action,
+      to: details.to,
+      subject: details.subject,
+    });
+  };
 
   useEffect(() => {
     if (getHistoryQuery.data?.messages) {
@@ -391,6 +438,7 @@ export default function ChatPage() {
               ? parseDraftBlock(message.content)
               : { draft: null, textBefore: message.content };
             const isDismissed = dismissedDrafts.has(message.id);
+            const emailAction = isBot ? parseEmailAction(message.content) : null;
 
             return (
               <div
@@ -409,9 +457,9 @@ export default function ChatPage() {
                 </div>
 
                 {/* Message Body — stretch to fill when a draft card is present */}
-                <div className={`space-y-2 max-w-[80%] ${draft && !isDismissed ? "w-full" : ""}`}>
+                <div className={`space-y-2 max-w-[80%] ${(draft || emailAction) && !isDismissed ? "w-full" : ""}`}>
                   {/* Text portion (shown when there's text before the draft block, or no draft) */}
-                  {(textBefore || !draft) && (
+                  {(textBefore || (!draft && !emailAction)) && (
                     <div
                       className={`p-4 rounded-2xl shadow-sm border text-sm leading-relaxed whitespace-pre-wrap ${
                         isBot
@@ -419,17 +467,28 @@ export default function ChatPage() {
                           : "bg-primary text-primary-foreground border-primary"
                       }`}
                     >
-                      {parseContentWithLinks(draft ? textBefore : message.content)}
+                      {parseContentWithLinks((draft || emailAction) ? textBefore : message.content)}
                     </div>
                   )}
 
-                  {/* Draft card — shown only for bot messages with a parsed draft */}
-                  {draft && !isDismissed && (
+                  {/* Completed email action banner — replaces draft card after send/save */}
+                  {emailAction && (
+                    <EmailActionBanner
+                      action={emailAction.action}
+                      to={emailAction.to}
+                      subject={emailAction.subject}
+                    />
+                  )}
+
+                  {/* Draft card — shown only for bot messages with a parsed draft that hasn't been actioned */}
+                  {draft && !isDismissed && !emailAction && (
                     <EmailDraftCard
                       draft={draft}
+                      messageId={message.id}
                       onDismiss={() =>
                         setDismissedDrafts((prev) => new Set([...prev, message.id]))
                       }
+                      onActioned={handleEmailActioned}
                     />
                   )}
 

@@ -58,6 +58,36 @@ export const agentRouter = router({
       return { success: true };
     }),
 
+  // Update a message's content after email action (sent/drafted)
+  updateMessage: tenantProcedure
+    .meta({ openapi: { method: "POST", path: getPath("/update-message"), tags: TAGS } })
+    .input(
+      z.object({
+        tenantId: z.string(),
+        messageId: z.string(),
+        action: z.enum(["sent", "drafted"]),
+        to: z.string(),
+        subject: z.string(),
+      }),
+    )
+    .output(z.object({ success: z.boolean() }))
+    .mutation(async ({ input, ctx }) => {
+      const userId = ctx.session.user.id;
+      // Fetch the message, replace draft block with action marker, and update
+      const history = await chatMessageRepository.findByUserId(userId);
+      const message = history.find((m) => m.id === input.messageId);
+      if (!message) return { success: false };
+
+      const marker =
+        input.action === "sent"
+          ? `%%EMAIL_SENT%%${JSON.stringify({ to: input.to, subject: input.subject })}%%END_SENT%%`
+          : `%%EMAIL_DRAFTED%%${JSON.stringify({ to: input.to, subject: input.subject })}%%END_DRAFTED%%`;
+
+      const newContent = message.content.replace(/%%EMAIL_DRAFT%%[\s\S]*?%%END_DRAFT%%/, marker);
+      await chatMessageRepository.updateContent(input.messageId, userId, newContent);
+      return { success: true };
+    }),
+
   // AI chat completion
   chat: tenantProcedure
     .meta({ openapi: { method: "POST", path: getPath("/chat"), tags: TAGS } })

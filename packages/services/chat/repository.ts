@@ -56,5 +56,17 @@ export class ChatMessageRepository {
         )
       );
   }
+
+  public async updateContent(messageId: string, userId: string, newContent: string): Promise<void> {
+    await db
+      .update(chatMessages)
+      .set({ content: newContent })
+      .where(
+        and(
+          eq(chatMessages.id, messageId),
+          eq(chatMessages.userId, userId)
+        )
+      );
+  }
 }
 export const chatMessageRepository = new ChatMessageRepository();
