@@ -156,8 +156,8 @@ export const calendarRouter = router({
         summary: input.summary,
         description: input.description,
         location: input.location,
-        start: { dateTime: input.startDateTime, timeZone: "UTC" },
-        end: { dateTime: input.endDateTime, timeZone: "UTC" },
+        start: { dateTime: input.startDateTime, timeZone: "Asia/Kolkata" },
+        end: { dateTime: input.endDateTime, timeZone: "Asia/Kolkata" },
         attendees: (input.attendeeEmails ?? []).map((email) => ({ email })),
       };
 
@@ -224,8 +224,8 @@ export const calendarRouter = router({
         summary: input.summary,
         description: input.description,
         location: input.location,
-        start: { dateTime: input.startDateTime, timeZone: "UTC" },
-        end: { dateTime: input.endDateTime, timeZone: "UTC" },
+        start: { dateTime: input.startDateTime, timeZone: "Asia/Kolkata" },
+        end: { dateTime: input.endDateTime, timeZone: "Asia/Kolkata" },
         attendees: input.attendeeEmails.map((email) => ({ email })),
       };
 
@@ -309,8 +309,8 @@ export const calendarRouter = router({
       if (input.summary) patch.summary = input.summary;
       if (input.description) patch.description = input.description;
       if (input.location) patch.location = input.location;
-      if (input.startDateTime) patch.start = { dateTime: input.startDateTime, timeZone: "UTC" };
-      if (input.endDateTime) patch.end = { dateTime: input.endDateTime, timeZone: "UTC" };
+      if (input.startDateTime) patch.start = { dateTime: input.startDateTime, timeZone: "Asia/Kolkata" };
+      if (input.endDateTime) patch.end = { dateTime: input.endDateTime, timeZone: "Asia/Kolkata" };
       if (input.attendeeEmails) {
         patch.attendees = input.attendeeEmails.map((email) => ({ email }));
       }

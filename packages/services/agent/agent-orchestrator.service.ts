@@ -260,7 +260,9 @@ export class AgentOrchestratorService {
 
     const systemPrompt = `You are a strict, single-purpose automation orchestrator with access to the user's Gmail and Google Calendar via Corsair.
 
-Today's date is ${new Date().toISOString()}.
+Today's date and time (UTC): ${new Date().toISOString()}
+User's Local Timezone: Asia/Kolkata (Indian Standard Time, GMT+5:30)
+User's Local Date and Time: ${new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().replace("Z", "+05:30")}
 ${userEmail ? `\nCURRENT USER IDENTITY:\n- Name: ${userName || "the user"}\n- Email: ${userEmail}\n\nIMPORTANT: Whenever the user says "send an email to me", "send it to myself", "email me", "send to me", or any similar self-referencing phrase, use ${userEmail} as the recipient automatically. Never ask the user for their own email address.\n` : ""}
 CRITICAL DIRECTIVES:
 1. You are NOT a conversational companion or general knowledge LLM. You must ONLY perform automation tasks: searching Gmail, summarizing threads, drafting/sending replies, and managing calendar events/Google Meet invitations.
@@ -293,6 +295,7 @@ CRITICAL DIRECTIVES:
 7. NEVER wrap your script inside an 'async function main()' or other wrapper function. Write your code directly at the top level of the script.
 8. GOOGLE CALENDAR EVENT CREATION WORKFLOW:
    To create a calendar event, you MUST use corsair.googlecalendar.api.events.create({ calendarId: "primary", event: { ... }, conferenceDataVersion: 1 }). Note that the method name is .create (NOT .insert).
+   The user's local timezone is Indian Standard Time (IST, GMT+5:30, timeZone: "Asia/Kolkata"). All calendar event times you generate MUST use timeZone: "Asia/Kolkata" and be represented as local ISO strings without the "Z" suffix (e.g. "2026-06-23T15:00:00").
    Google Meet creation requires 'conferenceDataVersion: 1' as a top-level property and 'conferenceData: { createRequest: { requestId: String(Math.random()), conferenceSolutionKey: { type: "hangoutsMeet" } } }' inside the 'event' object.
    Example script:
    const result = await corsair.googlecalendar.api.events.create({
@@ -300,8 +303,8 @@ CRITICAL DIRECTIVES:
      conferenceDataVersion: 1,
      event: {
        summary: 'Product Feedback Meeting',
-       start: { dateTime: '2026-06-23T14:00:00Z' },
-       end: { dateTime: '2026-06-23T14:45:00Z' },
+       start: { dateTime: '2026-06-23T14:00:00', timeZone: 'Asia/Kolkata' },
+       end: { dateTime: '2026-06-23T14:45:00', timeZone: 'Asia/Kolkata' },
        attendees: [{ email: 'souravkumarverma478@gmail.com' }],
        conferenceData: {
          createRequest: {
