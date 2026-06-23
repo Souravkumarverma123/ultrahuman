@@ -23,13 +23,13 @@ export class TokenBudgetService {
   private maxToolResultChars: number;
 
   constructor() {
-    this.dailyTokenLimit = this.parsePositiveIntegerEnv("AGENT_DAILY_TOKEN_LIMIT", 20_000);
+    this.dailyTokenLimit = this.parsePositiveIntegerEnv("AGENT_DAILY_TOKEN_LIMIT", 100_000);
     this.dailyRequestLimit = this.parsePositiveIntegerEnv("AGENT_DAILY_REQUEST_LIMIT", 100);
-    this.maxInputChars = this.parsePositiveIntegerEnv("AGENT_MAX_INPUT_CHARS", 2_000);
-    this.maxOutputTokens = this.parsePositiveIntegerEnv("AGENT_MAX_OUTPUT_TOKENS", 600);
-    this.historyMessageLimit = this.parsePositiveIntegerEnv("AGENT_HISTORY_MESSAGE_LIMIT", 8);
-    this.maxToolRounds = this.parsePositiveIntegerEnv("AGENT_MAX_TOOL_ROUNDS", 3);
-    this.maxToolResultChars = this.parsePositiveIntegerEnv("AGENT_MAX_TOOL_RESULT_CHARS", 6_000);
+    this.maxInputChars = this.parsePositiveIntegerEnv("AGENT_MAX_INPUT_CHARS", 8_000);
+    this.maxOutputTokens = this.parsePositiveIntegerEnv("AGENT_MAX_OUTPUT_TOKENS", 2_048);
+    this.historyMessageLimit = this.parsePositiveIntegerEnv("AGENT_HISTORY_MESSAGE_LIMIT", 20);
+    this.maxToolRounds = this.parsePositiveIntegerEnv("AGENT_MAX_TOOL_ROUNDS", 10);
+    this.maxToolResultChars = this.parsePositiveIntegerEnv("AGENT_MAX_TOOL_RESULT_CHARS", 12_000);
   }
 
   private parsePositiveIntegerEnv(name: string, fallback: number): number {

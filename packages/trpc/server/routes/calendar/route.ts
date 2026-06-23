@@ -151,16 +151,31 @@ export const calendarRouter = router({
     .output(calendarEventSchema)
     .mutation(async ({ input, ctx }) => {
       const client = corsair.withTenant(ctx.session.user.id);
+
+      const eventBody: Record<string, unknown> = {
+        summary: input.summary,
+        description: input.description,
+        location: input.location,
+        start: { dateTime: input.startDateTime, timeZone: "UTC" },
+        end: { dateTime: input.endDateTime, timeZone: "UTC" },
+        attendees: (input.attendeeEmails ?? []).map((email) => ({ email })),
+      };
+
+      // Google Calendar API requires BOTH conferenceDataVersion: 1 on the
+      // request AND conferenceData.createRequest inside the event body to
+      // actually generate a Google Meet link.
+      if (input.addGoogleMeet) {
+        eventBody.conferenceData = {
+          createRequest: {
+            requestId: `meet-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+            conferenceSolutionKey: { type: "hangoutsMeet" },
+          },
+        };
+      }
+
       const e = (await client.googlecalendar.api.events.create({
         calendarId: input.calendarId,
-        event: {
-          summary: input.summary,
-          description: input.description,
-          location: input.location,
-          start: { dateTime: input.startDateTime, timeZone: "UTC" },
-          end: { dateTime: input.endDateTime, timeZone: "UTC" },
-          attendees: (input.attendeeEmails ?? []).map((email) => ({ email })),
-        },
+        event: eventBody,
         sendNotifications: input.sendNotifications,
         conferenceDataVersion: input.addGoogleMeet ? 1 : undefined,
       })) as Record<string, unknown>;
@@ -175,6 +190,7 @@ export const calendarRouter = router({
         startDateTime: start?.dateTime ?? input.startDateTime,
         endDateTime: end?.dateTime ?? input.endDateTime,
         attendees: (e.attendees as z.infer<typeof attendeeSchema>[]) ?? [],
+        meetLink: e.hangoutLink ? String(e.hangoutLink) : undefined,
         htmlLink: e.htmlLink ? String(e.htmlLink) : undefined,
       };
     }),
@@ -204,27 +220,47 @@ export const calendarRouter = router({
     .mutation(async ({ input, ctx }) => {
       const client = corsair.withTenant(ctx.session.user.id);
 
+      const eventBody: Record<string, unknown> = {
+        summary: input.summary,
+        description: input.description,
+        location: input.location,
+        start: { dateTime: input.startDateTime, timeZone: "UTC" },
+        end: { dateTime: input.endDateTime, timeZone: "UTC" },
+        attendees: input.attendeeEmails.map((email) => ({ email })),
+      };
+
+      // Google Calendar API requires BOTH conferenceDataVersion: 1 on the
+      // request AND conferenceData.createRequest inside the event body to
+      // actually generate a Google Meet link.
+      if (input.addGoogleMeet) {
+        eventBody.conferenceData = {
+          createRequest: {
+            requestId: `meet-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+            conferenceSolutionKey: { type: "hangoutsMeet" },
+          },
+        };
+      }
+
       // Create the calendar event
       const e = (await client.googlecalendar.api.events.create({
         calendarId: "primary",
-        event: {
-          summary: input.summary,
-          description: input.description,
-          location: input.location,
-          start: { dateTime: input.startDateTime, timeZone: "UTC" },
-          end: { dateTime: input.endDateTime, timeZone: "UTC" },
-          attendees: input.attendeeEmails.map((email) => ({ email })),
-        },
+        event: eventBody,
         sendNotifications: true,
         conferenceDataVersion: input.addGoogleMeet ? 1 : undefined,
       })) as Record<string, unknown>;
 
+      const meetLink = e.hangoutLink ? String(e.hangoutLink) : undefined;
+
       // Optionally also send a personal email alongside the calendar invite
       if (input.emailBody) {
+        // If a Meet link was generated, substitute the placeholder in the email body
+        const finalBody = meetLink
+          ? input.emailBody.replace(/\[Google Meet Link will be attached here\]/gi, meetLink)
+          : input.emailBody;
         const raw = Buffer.from(
           `To: ${input.attendeeEmails.join(", ")}\r\n` +
             `Subject: Invite: ${input.summary}\r\n\r\n` +
-            `${input.emailBody}`,
+            `${finalBody}`,
         ).toString("base64url");
         await client.gmail.api.messages.send({
           raw,
@@ -242,6 +278,7 @@ export const calendarRouter = router({
           startDateTime: start?.dateTime ?? input.startDateTime,
           endDateTime: end?.dateTime ?? input.endDateTime,
           attendees: (e.attendees as z.infer<typeof attendeeSchema>[]) ?? [],
+          meetLink,
           htmlLink: e.htmlLink ? String(e.htmlLink) : undefined,
         },
         emailsSent: Boolean(input.emailBody),
