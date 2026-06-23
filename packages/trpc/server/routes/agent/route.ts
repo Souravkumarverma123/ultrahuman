@@ -94,7 +94,7 @@ export const agentRouter = router({
     .input(
       z.object({
         tenantId: z.string(),
-        message: z.string(),
+        message: z.string().max(10_000),
         model: z.string().optional(),
       }),
     )

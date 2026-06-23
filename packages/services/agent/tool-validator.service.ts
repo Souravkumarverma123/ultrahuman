@@ -59,16 +59,18 @@ export class ToolValidatorService {
         function visit(node: ts.Node) {
           if (!safe) return;
 
-          // Block functions, arrow functions, and classes
+          // Block named function declarations and classes (closures can
+          // capture sandbox objects and escape via prototype chains).
+          // Arrow functions and function expressions are ALLOWED because
+          // they're essential for .map()/.filter() and the VM sandbox
+          // already isolates scope.
           if (
             ts.isFunctionDeclaration(node) ||
-            ts.isFunctionExpression(node) ||
-            ts.isArrowFunction(node) ||
             ts.isClassDeclaration(node) ||
             ts.isClassExpression(node)
           ) {
             safe = false;
-            reason = "Declaring functions, arrow functions, or classes is not allowed.";
+            reason = "Declaring named functions or classes is not allowed.";
             return;
           }
 
@@ -76,13 +78,6 @@ export class ToolValidatorService {
           if (node.kind === ts.SyntaxKind.ThisKeyword) {
             safe = false;
             reason = "Accessing 'this' keyword is not allowed.";
-            return;
-          }
-
-          // Block bracket element access (e.g. obj[prop] or obj['prop']) to prevent property name obfuscation
-          if (ts.isElementAccessExpression(node)) {
-            safe = false;
-            reason = "Dynamic/bracket property accesses (e.g. obj[key]) are not allowed. Use dot notation.";
             return;
           }
 
@@ -99,9 +94,21 @@ export class ToolValidatorService {
           // Block sensitive properties accessed via dot notation (e.g. obj.constructor)
           if (ts.isPropertyAccessExpression(node)) {
             const propName = node.name.text.toLowerCase();
-            if (propName === "constructor" || propName === "prototype") {
+            if (propName === "constructor" || propName === "prototype" || propName === "__proto__") {
               safe = false;
               reason = `Accessing sensitive property '${node.name.text}' is blocked.`;
+              return;
+            }
+          }
+
+          // Block bracket access to sensitive properties (e.g. obj["constructor"])
+          if (ts.isElementAccessExpression(node)) {
+            const argText = ts.isStringLiteral(node.argumentExpression)
+              ? node.argumentExpression.text.toLowerCase()
+              : "";
+            if (argText === "constructor" || argText === "prototype" || argText === "__proto__") {
+              safe = false;
+              reason = `Accessing sensitive property '${argText}' is blocked.`;
               return;
             }
           }

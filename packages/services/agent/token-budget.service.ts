@@ -100,13 +100,6 @@ export class TokenBudgetService {
   }
 
   public hasBudget(summary: TokenUsageSummary, estimatedTokens: number) {
-    if (summary.remainingRequests <= 0) {
-      return {
-        allowed: false,
-        reply: `You've reached today's assistant request limit (${summary.dailyRequestLimit}). Please try again tomorrow.`,
-      };
-    }
-
     if (summary.remainingTokens < estimatedTokens) {
       return {
         allowed: false,
@@ -115,6 +108,44 @@ export class TokenBudgetService {
     }
 
     return { allowed: true };
+  }
+
+  /**
+   * Atomically reserves a request slot for the day. Prevents concurrent
+   * requests from racing past the daily request limit (TOCTOU). The
+   * conditional upsert only increments when under the limit; if the limit is
+   * already reached the row is not updated and `returning()` yields nothing.
+   * Request count is reserved here, so recordUsage() only accounts for tokens.
+   */
+  public async reserveRequest(userId: string): Promise<{ allowed: boolean; requestCount: number }> {
+    const usageDate = this.getUsageDateKey();
+    const id = this.getUsageId(userId, usageDate);
+
+    const result = await db
+      .insert(agentTokenUsage)
+      .values({
+        id,
+        userId,
+        usageDate,
+        requestCount: 1,
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
+      })
+      .onConflictDoUpdate({
+        target: agentTokenUsage.id,
+        set: {
+          requestCount: sql`${agentTokenUsage.requestCount} + 1`,
+          updatedAt: new Date(),
+        },
+        setWhere: sql`${agentTokenUsage.requestCount} < ${this.dailyRequestLimit}`,
+      })
+      .returning({ requestCount: agentTokenUsage.requestCount });
+
+    if (result.length === 0) {
+      return { allowed: false, requestCount: this.dailyRequestLimit };
+    }
+    return { allowed: true, requestCount: result[0]!.requestCount };
   }
 
   public async recordUsage({
@@ -136,7 +167,7 @@ export class TokenBudgetService {
         id: this.getUsageId(userId, usageDate),
         userId,
         usageDate,
-        requestCount: 1,
+        requestCount: 0,
         promptTokens,
         completionTokens,
         totalTokens,
@@ -144,7 +175,6 @@ export class TokenBudgetService {
       .onConflictDoUpdate({
         target: agentTokenUsage.id,
         set: {
-          requestCount: sql`${agentTokenUsage.requestCount} + 1`,
           promptTokens: sql`${agentTokenUsage.promptTokens} + ${promptTokens}`,
           completionTokens: sql`${agentTokenUsage.completionTokens} + ${completionTokens}`,
           totalTokens: sql`${agentTokenUsage.totalTokens} + ${totalTokens}`,
