@@ -62,6 +62,14 @@ function parseDraftBlock(content: string): { draft: EmailDraft | null; textBefor
   }
 }
 
+function stripEmailTags(content: string): string {
+  return content
+    .replace(/%%EMAIL_DRAFT%%[\s\S]*?%%END_DRAFT%%/g, "")
+    .replace(/%%EMAIL_SENT%%[\s\S]*?%%END_SENT%%/g, "")
+    .replace(/%%EMAIL_DRAFTED%%[\s\S]*?%%END_DRAFTED%%/g, "")
+    .trim();
+}
+
 function parseContentWithLinks(content: string) {
   const regex = /\[([^\]]+)\]\(([^)]+)\)/g;
   const parts: React.ReactNode[] = [];
@@ -299,8 +307,7 @@ export default function ChatPage() {
   const welcomeMessage: Message = {
     id: "welcome",
     role: "assistant",
-    content:
-      "Hello! I am your AI Orchestrator. I have full access to your connected Gmail and Google Calendar via Corsair.\n\nYou can ask me to search or draft emails, look up your weekly schedule, or coordinate invites.\n\nWhen you ask me to **draft** an email, I'll compose a proper professional email and show it here for review — you can then **Send** or **Save as Draft** without committing immediately. How can I help you today?",
+    content: "Hi! Tell me, how can I help you automate your tasks today?",
   };
 
   const [messages, setMessages] = useState<Message[]>([welcomeMessage]);
@@ -434,11 +441,12 @@ export default function ChatPage() {
         <div className="max-w-3xl mx-auto space-y-6">
           {messages.map((message) => {
             const isBot = message.role === "assistant";
-            const { draft, textBefore } = isBot
+            const { draft } = isBot
               ? parseDraftBlock(message.content)
-              : { draft: null, textBefore: message.content };
+              : { draft: null };
             const isDismissed = dismissedDrafts.has(message.id);
             const emailAction = isBot ? parseEmailAction(message.content) : null;
+            const displayText = isBot ? stripEmailTags(message.content) : message.content;
 
             return (
               <div
@@ -458,8 +466,8 @@ export default function ChatPage() {
 
                 {/* Message Body — stretch to fill when a draft card is present */}
                 <div className={`space-y-2 max-w-[80%] ${(draft || emailAction) && !isDismissed ? "w-full" : ""}`}>
-                  {/* Text portion (shown when there's text before the draft block, or no draft) */}
-                  {(textBefore || (!draft && !emailAction)) && (
+                  {/* Text portion (shown when there is non-empty content to display) */}
+                  {displayText && (
                     <div
                       className={`p-4 rounded-2xl shadow-sm border text-sm leading-relaxed whitespace-pre-wrap ${
                         isBot
@@ -467,7 +475,7 @@ export default function ChatPage() {
                           : "bg-primary text-primary-foreground border-primary"
                       }`}
                     >
-                      {parseContentWithLinks((draft || emailAction) ? textBefore : message.content)}
+                      {parseContentWithLinks(displayText)}
                     </div>
                   )}
 
@@ -490,22 +498,6 @@ export default function ChatPage() {
                       }
                       onActioned={handleEmailActioned}
                     />
-                  )}
-
-                  {/* Tool badges */}
-                  {isBot && message.toolsUsed && message.toolsUsed.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 px-1">
-                      {message.toolsUsed.map((tool, idx) => (
-                        <Badge
-                          key={idx}
-                          variant="secondary"
-                          className="text-[10px] font-mono px-2 py-0.5 bg-muted/50 border border-border/60 text-muted-foreground flex items-center gap-1"
-                        >
-                          <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                          corsair_tool:{tool}
-                        </Badge>
-                      ))}
-                    </div>
                   )}
                 </div>
               </div>
