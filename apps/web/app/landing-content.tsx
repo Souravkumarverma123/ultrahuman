@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useTheme } from "next-themes";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowRight,
@@ -337,24 +338,18 @@ function ProductMockup() {
 }
 
 export function LandingContent() {
-  const [isDark, setIsDark] = useState(false);
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Sync with browser theme preference on mount
   useEffect(() => {
-    const saved = localStorage.getItem("landing-theme");
-    if (saved) {
-      setIsDark(saved === "dark");
-    } else {
-      const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      setIsDark(systemPrefersDark);
-    }
+    setMounted(true);
   }, []);
 
+  const isDark = mounted ? resolvedTheme === "dark" : false;
+
   const toggleTheme = () => {
-    const nextDark = !isDark;
-    setIsDark(nextDark);
-    localStorage.setItem("landing-theme", nextDark ? "dark" : "light");
+    setTheme(resolvedTheme === "dark" ? "light" : "dark");
   };
 
   return (

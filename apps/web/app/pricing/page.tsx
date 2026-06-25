@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -21,6 +21,7 @@ import { trpc } from "~/trpc/client";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "~/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
+import { useTheme } from "next-themes";
 
 
 
@@ -28,8 +29,19 @@ export default function PricingPage() {
   const router = useRouter();
   const { data: session } = useSession();
   const [loadingCheckout, setLoadingCheckout] = useState(false);
-  const [isDark, setIsDark] = useState(true);
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isDark = mounted ? resolvedTheme === "dark" : false;
+
+  const toggleTheme = () => {
+    setTheme(resolvedTheme === "dark" ? "light" : "dark");
+  };
 
   // tRPC mutations and queries
   const createCheckoutOrder = trpc.payment.createCheckoutOrder.useMutation();
@@ -38,13 +50,6 @@ export default function PricingPage() {
   const billingInfo = trpc.payment.getUserBillingInfo.useQuery(undefined, {
     enabled: !!session,
   });
-
-  const toggleTheme = () => {
-    setIsDark(!isDark);
-    if (typeof document !== "undefined") {
-      document.documentElement.classList.toggle("dark", !isDark);
-    }
-  };
 
   const handleUpgrade = async () => {
     if (!session) {

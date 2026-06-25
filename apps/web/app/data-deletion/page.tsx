@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { BrandLogo } from "~/components/brand-logo";
 import { Button } from "~/components/ui/button";
+import { useTheme } from "next-themes";
 
 const contactEmail = "souravkumarverma56@gmail.com";
 
@@ -52,21 +53,17 @@ const deletionCards = [
 ];
 
 export default function DataDeletionPage() {
-  const [isDark, setIsDark] = useState(false);
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem("landing-theme");
-    if (saved) {
-      setIsDark(saved === "dark");
-    } else {
-      setIsDark(window.matchMedia("(prefers-color-scheme: dark)").matches);
-    }
+    setMounted(true);
   }, []);
 
+  const isDark = mounted ? resolvedTheme === "dark" : false;
+
   const toggleTheme = () => {
-    const nextDark = !isDark;
-    setIsDark(nextDark);
-    localStorage.setItem("landing-theme", nextDark ? "dark" : "light");
+    setTheme(resolvedTheme === "dark" ? "light" : "dark");
   };
 
   return (

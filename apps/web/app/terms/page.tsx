@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { BrandLogo } from "~/components/brand-logo";
+import { useTheme } from "next-themes";
 
 const navItems = [
   { label: "Workflow", href: "/#workflow" },
@@ -38,22 +39,17 @@ const sections = [
 ];
 
 export default function TermsPage() {
-  const [isDark, setIsDark] = useState(false);
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem("landing-theme");
-    if (saved) {
-      setIsDark(saved === "dark");
-    } else {
-      const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      setIsDark(systemPrefersDark);
-    }
+    setMounted(true);
   }, []);
 
+  const isDark = mounted ? resolvedTheme === "dark" : false;
+
   const toggleTheme = () => {
-    const nextDark = !isDark;
-    setIsDark(nextDark);
-    localStorage.setItem("landing-theme", nextDark ? "dark" : "light");
+    setTheme(resolvedTheme === "dark" ? "light" : "dark");
   };
 
   return (
