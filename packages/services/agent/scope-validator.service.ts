@@ -81,10 +81,9 @@ export class ScopeValidatorService {
       return { allowed: true };
     }
 
-    // If the user is in an active conversation and sends a short follow-up
-    // reply (time, email, duration, confirmation), allow it through so the
-    // agent can continue the task instead of blocking mid-flow.
-    if (hasConversationContext && this.isFollowUpReply(normalized)) {
+    // If the user is in an active conversation, allow follow-up messages
+    // as long as they don't match the blocked intent patterns.
+    if (hasConversationContext) {
       return { allowed: true };
     }
 
