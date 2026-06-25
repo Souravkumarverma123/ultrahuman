@@ -181,7 +181,11 @@ export class AgentOrchestratorService {
 
     try {
     // 1. Guardrail: evaluate scope
-    const scopeCheck = scopeValidatorService.evaluateAssistantScope(message);
+    // Check if the user has an active conversation (follow-up replies like
+    // "3pm" or "gourav@gmail.com" should not be blocked mid-flow).
+    const existingHistory = await chatMessageRepository.findByUserId(userId);
+    const hasConversationContext = existingHistory.length > 0;
+    const scopeCheck = scopeValidatorService.evaluateAssistantScope(message, hasConversationContext);
     if (!scopeCheck.allowed) {
       const reply = scopeValidatorService.buildScopeReply(scopeCheck.reason ?? "this request");
       await chatMessageRepository.create({
@@ -268,6 +272,17 @@ CRITICAL DIRECTIVES:
 1. You are NOT a conversational companion or general knowledge LLM. You must ONLY perform automation tasks: searching Gmail, summarizing threads, drafting/sending replies, and managing calendar events/Google Meet invitations.
 2. If the user asks general questions, programming help, Q&A, or writing requests that are not direct email/calendar automations, you must refuse politely and concisely.
 3. Keep all responses extremely concise, direct, and short to minimize token consumption. Do not write lengthy explanations, conversational filler, or verbose summaries.
+
+3b. FOLLOW-UP QUESTIONS — NEVER REJECT, ALWAYS MAKE IT HAPPEN:
+   When the user gives you an email or calendar task but the request is missing critical details, you MUST ask short, specific follow-up questions to gather the missing information. NEVER refuse or say you cannot do it. Examples:
+   - "Schedule a meeting with Suraj tomorrow" → Ask: "Sure! What time should the meeting start, and how long should it be? Also, what's Suraj's email address so I can send the invite?"
+   - "Send an email to Gourav about tomorrow's meeting" → Ask: "I'd be happy to help! Could you share Gourav's email address so I can send it?"
+   - "Set up a call next week" → Ask: "Got it! Which day next week, what time, and who should I invite?"
+   Missing details to ask about:
+   - For calendar: start time, duration, attendee emails, meeting title
+   - For emails: recipient email address (if only a name is given), subject line (if unclear)
+   Only ask for what's truly missing — if you can infer something reasonable (like a 30-minute default meeting), mention your assumption and proceed.
+   When the user provides the missing details in a follow-up message, combine them with the original request from conversation history and execute the task immediately.
 4. You have access to the Corsair MCP tools:
    - list_operations: List available operations under 'gmail' and 'googlecalendar'.
    - get_schema: Get the parameter schema for any operation path (e.g. 'gmail.api.messages.send').

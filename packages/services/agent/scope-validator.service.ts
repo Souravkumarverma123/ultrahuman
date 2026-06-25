@@ -33,7 +33,39 @@ export class ScopeValidatorService {
     /\b(what can you do|help|capabilities|token usage|usage|limit|quota)\b/i,
   ];
 
-  public evaluateAssistantScope(message: string): { allowed: boolean; reason?: string } {
+  /**
+   * Detects if a message looks like a short follow-up reply to a previous
+   * agent question (e.g. "3pm", "gourav@gmail.com", "30 minutes", "yes").
+   */
+  private isFollowUpReply(message: string): boolean {
+    const trimmed = message.trim();
+    // Very short messages (under 120 chars) that look like answers
+    if (trimmed.length > 120) return false;
+
+    // Time patterns: "3pm", "3:30 PM", "15:00", "at 3", "tomorrow at 5"
+    if (/^\d{1,2}(:\d{2})?\s*(am|pm)?$/i.test(trimmed)) return true;
+    if (/\b\d{1,2}(:\d{2})?\s*(am|pm)\b/i.test(trimmed) && trimmed.length < 50) return true;
+
+    // Email addresses
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/i.test(trimmed)) return true;
+    if (/[^\s@]+@[^\s@]+\.[^\s@]+/i.test(trimmed) && trimmed.length < 80) return true;
+
+    // Duration patterns: "30 minutes", "1 hour", "45 min"
+    if (/^\d+\s*(minutes?|mins?|hours?|hrs?)$/i.test(trimmed)) return true;
+
+    // Yes/No/Confirm/Cancel patterns
+    if (/^(yes|no|yeah|nah|ok|okay|sure|confirm|cancel|correct|right|nope|yep|go ahead|do it|proceed|sounds good|perfect|that's? (right|correct|fine|good))$/i.test(trimmed)) return true;
+
+    // Name-only replies: "Suraj", "Gourav Kumar"
+    if (/^[A-Z][a-z]+(\s[A-Z][a-z]+){0,2}$/.test(trimmed) && trimmed.length < 40) return true;
+
+    // Date patterns: "tomorrow", "next monday", "June 26", "26th"
+    if (/^(today|tomorrow|day after tomorrow|next\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)|\d{1,2}(st|nd|rd|th)?(\s+\w+)?|\w+\s+\d{1,2})$/i.test(trimmed)) return true;
+
+    return false;
+  }
+
+  public evaluateAssistantScope(message: string, hasConversationContext = false): { allowed: boolean; reason?: string } {
     const normalized = message.trim();
 
     for (const blocked of this.blockedIntentPatterns) {
@@ -46,6 +78,13 @@ export class ScopeValidatorService {
     }
 
     if (this.allowedIntentPatterns.some((pattern) => pattern.test(normalized))) {
+      return { allowed: true };
+    }
+
+    // If the user is in an active conversation and sends a short follow-up
+    // reply (time, email, duration, confirmation), allow it through so the
+    // agent can continue the task instead of blocking mid-flow.
+    if (hasConversationContext && this.isFollowUpReply(normalized)) {
       return { allowed: true };
     }
 
