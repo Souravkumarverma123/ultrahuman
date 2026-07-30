@@ -14,9 +14,9 @@ Ultrahuman replaces the context-switching between your inbox and calendar with a
 
 | Feature | What you get |
 |---|---|
-| **Unified Inbox** | Full Gmail client in the browser -- folders (Inbox, Starred, Sent, Archive, Trash), thread list, email viewer, compose, reply, search, and keyboard shortcuts (j/k/e/s/c). AI-powered priority classification surfaces what matters. |
-| **Calendar** | Weekly calendar view with event creation, Google Meet links, RSVP responses (Accept / Decline / Tentative), and companion email invites. |
-| **AI Orchestrator** | A chat-based agent (powered by OpenAI function calling + Corsair MCP tools) that reads emails, drafts replies, creates calendar events, and searches your inbox using natural language. |
+| **Unified Inbox** | Full Gmail client in the browser — folders (Inbox, Starred, Sent, Archive, Trash), thread list, email viewer, compose, reply, search, and keyboard shortcuts (j/k/e/s/c). Full draft management (create, edit, send, delete). AI-powered priority classification surfaces what matters. |
+| **Calendar** | Day, week, month, and year views with event creation, Google Meet links, RSVP responses (Accept / Decline / Tentative), and companion email invites. All times use Asia/Kolkata timezone. |
+| **AI Orchestrator** | A chat-based agent (powered by OpenAI function calling + Corsair MCP tools) that reads emails, drafts replies, creates calendar events, and searches your inbox using natural language. Supports multi-turn follow-ups and email search/list workflows. |
 | **Realtime Updates** | Gmail and Calendar screens update live via Server-Sent Events (SSE) when Corsair pushes webhook notifications. No manual refresh. |
 | **Payments** | Subscription billing via Dodo Payments (Free tier + Pro tier, monthly and annual plans, INR pricing). |
 
@@ -79,7 +79,7 @@ packages/
 | Layer | Technology |
 |---|---|
 | Monorepo | [Turborepo](https://turborepo.com) + pnpm 9 workspaces |
-| Frontend | [Next.js 16](https://nextjs.org) (App Router) + React 19 + Tailwind CSS + shadcn/ui + Radix |
+| Frontend | [Next.js 16](https://nextjs.org) (App Router) + React 19 + Tailwind CSS 4 + shadcn/ui + Radix + [next-themes](https://github.com/pacocoursey/next-themes) + TanStack Query |
 | Backend | Express 5 + [tRPC v11](https://trpc.io) + OpenAPI (via trpc-to-openapi) |
 | Database | PostgreSQL 15 + [Drizzle ORM](https://orm.drizzle.team) |
 | Auth | [Better Auth](https://www.better-auth.com/) (email/password + Google OAuth 2.0) |
@@ -115,7 +115,15 @@ pnpm install
 bash setup.sh
 ```
 
-This copies `.env.example` -> `.env` and symlinks it into every app/package directory. Then fill in your values in `.env` (see `.env.example` for all required variables).
+This copies `.env.example` → `.env` and symlinks it into every app/package directory. Then fill in your values in `.env` (see [Environment Variables](#environment-variables) below).
+
+**Important:** Add `DATABASE_URL` to your `.env` for local development:
+
+```sh
+DATABASE_URL=postgresql://souravkumar:souravkumar178@localhost:5433/ultrahuman
+```
+
+This matches the credentials in `docker-compose.yml` (Postgres exposed on port **5433**).
 
 ### 3. Start the database
 
@@ -173,9 +181,9 @@ The PostgreSQL database has 11 tables across 4 domains:
 |---|---|
 | `health` | `getHealth` |
 | `auth` | `getSession`, `me` |
-| `gmail` | `listThreads`, `getThread`, `searchEmails`, `sendEmail`, `createDraft`, `archiveThread`, `markAsRead`, `starThread`, `trashThread`, `getAuthUrl`, `getConnectionStatus` |
+| `gmail` | `listThreads`, `getThread`, `searchEmails`, `sendEmail`, `createDraft`, `listDrafts`, `getDraft`, `updateDraft`, `deleteDraft`, `sendDraft`, `archiveThread`, `markAsRead`, `starThread`, `trashThread`, `untrashThread`, `deleteThreadPermanently`, `getAuthUrl`, `getConnectionStatus` |
 | `calendar` | `listEvents`, `getEvent`, `createEvent`, `createInvite`, `updateEvent`, `updateRSVP`, `deleteEvent`, `getAuthUrl`, `getConnectionStatus` |
-| `agent` | `chat`, `getHistory`, `clearHistory` |
+| `agent` | `chat`, `getHistory`, `clearHistory`, `updateMessage` |
 | `payment` | `createCheckoutOrder`, `getUserBillingInfo` |
 
 **Procedure middleware types:**
@@ -219,6 +227,7 @@ Corsair webhook -> POST /webhooks/corsair -> SSE broker -> GET /events/corsair -
 | `pnpm check-types` | TypeScript type-check across the monorepo |
 | `pnpm db:generate` | Generate Drizzle migration files from schema |
 | `pnpm db:migrate` | Apply pending migrations to the database |
+| `pnpm db:studio` | Open Drizzle Studio for the database |
 | `pnpm format` | Format all files with Prettier |
 | `pnpm test` | Run Vitest test suite |
 
@@ -250,18 +259,19 @@ The `tenantId` must be the signed-in Better Auth user id. The browser does not p
 
 ## Environment Variables
 
-See [`.env.example`](.env.example) for a full list with descriptions.
+See [`.env.example`](.env.example) for a template with inline comments. Run `bash setup.sh` to copy it to `.env` and symlink into all apps/packages.
 
 **Required:**
 
 | Variable | Purpose |
 |---|---|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `BETTER_AUTH_SECRET` | Session signing secret (32+ chars) |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth (Better Auth login) |
-| `CORSAIR_KEK` | Encryption key for Corsair integrations |
-| `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET` | Google OAuth (Gmail/Calendar access) |
-| `GOOGLE_OAUTH_REDIRECT_URI` | OAuth callback URL |
+| `DATABASE_URL` | PostgreSQL connection string (local: `postgresql://souravkumar:souravkumar178@localhost:5433/ultrahuman`) |
+| `BETTER_AUTH_SECRET` | Session signing secret (32+ chars; generate with `openssl rand -base64 32`) |
+| `BETTER_AUTH_URL` | Auth server URL (`http://localhost:8000` locally, `https://ultrahuman.co.in` in prod) |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth (Better Auth social login) |
+| `CORSAIR_KEK` | Encryption key for Corsair integrations (generate with `openssl rand -hex 32`) |
+| `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET` | Google OAuth (Gmail/Calendar access; falls back to `GOOGLE_CLIENT_*` if unset) |
+| `GOOGLE_OAUTH_REDIRECT_URI` | OAuth callback URL (`http://localhost:8000/corsair/callback` locally) |
 | `OPENAI_API_KEY` | OpenAI API key for AI agent |
 | `RESEND_API_KEY` | Email verification via Resend |
 | `DODO_PAYMENTS_API_KEY` | Dodo Payments API key |
@@ -275,12 +285,16 @@ See [`.env.example`](.env.example) for a full list with descriptions.
 |---|---|---|
 | `PORT` | `8000` | API server port |
 | `NODE_ENV` | `development` | Environment mode |
+| `BASE_URL` | `http://localhost:8000` | Public API base URL |
+| `WEB_URL` | `http://localhost:3000` | Public web app URL |
 | `EMAIL_MODEL` | `gpt-5-mini` | LLM model for email tasks |
 | `PLANNER_MODEL` | `gpt-4o-mini` | LLM model for planning |
 | `CALENDAR_MODEL` | `gpt-4o-mini` | LLM model for calendar |
 | `SEARCH_MODEL` | `gpt-4o-mini` | LLM model for search |
-| `NEXT_PUBLIC_API_URL` | `/trpc` (proxy) | Client-side API URL |
+| `NEXT_PUBLIC_API_URL` | *(empty — uses Next.js proxy)* | Client-side API URL |
 | `DOMAIN_NAME` | `localhost` | Domain for Caddy |
+| `DODO_PAYMENTS_ENVIRONMENT` | auto-detected | Force `test_mode` or `live_mode` |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | see `.env.example` | Used by production Docker Compose to build `DATABASE_URL` |
 
 ---
 
@@ -317,12 +331,30 @@ Caddy handles TLS termination, routing (`/trpc/*`, `/api/*`, `/events/*`, `/webh
 
 ---
 
+## Web App Routes
+
+| Route | Description |
+|---|---|
+| `/` | Landing page |
+| `/login`, `/signup` | Authentication |
+| `/inbox` | Unified Gmail inbox |
+| `/calendar` | Calendar (day / week / month / year views) |
+| `/chat` | AI orchestrator |
+| `/settings` | Account, integrations, billing |
+| `/pricing` | Subscription plans |
+| `/terms`, `/privacy`, `/cookies`, `/data-deletion` | Legal pages |
+
+The web app proxies `/trpc`, `/events/corsair`, and `/api/auth` to the API server in development.
+
+---
+
 ## Project Notes
 
 - All workspace packages use TypeScript source directly (no build step needed in dev thanks to `tsx`)
 - The `packages/trpc` package exposes `@repo/trpc/server` and `@repo/trpc/client` sub-path exports
 - The API production build uses `tsup` with `noExternal: [/^@repo\//]` to bundle all local packages
 - The `setup.sh` script symlinks the root `.env` into every app/package directory
+- Theme switching (light / dark / system) is handled by `next-themes` across all pages
 - A Cursor-inspired design system is documented in `DESIGN.md`
 
 ---

@@ -497,4 +497,51 @@
   .animate-scroll {
     animation: scroll var(--animation-duration, 40s) var(--animation-direction, forwards) linear infinite;
   }
+
+  /* Glassmorphism & Mesh Glows */
+  .glass-card {
+    background: rgba(250, 249, 245, 0.75);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border);
+  }
+
+  .dark .glass-card {
+    background: rgba(17, 17, 17, 0.75);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border);
+  }
+
+  .glow-mesh-orange {
+    background: radial-gradient(circle at 50% 50%, rgba(245, 78, 0, 0.12) 0%, rgba(245, 78, 0, 0) 70%);
+  }
+
+  .glow-mesh-emerald {
+    background: radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.12) 0%, rgba(16, 185, 129, 0) 70%);
+  }
+
+  /* Simulator Tab Button */
+  .simulator-tab {
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 200ms ease;
+    color: var(--muted-foreground);
+    border: 1px solid transparent;
+  }
+
+  .simulator-tab:hover {
+    color: var(--foreground);
+    background: var(--muted);
+  }
+
+  .simulator-tab.active {
+    color: var(--foreground);
+    background: var(--card);
+    border-color: var(--border);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
 }
+
