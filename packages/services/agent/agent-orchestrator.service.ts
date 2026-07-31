@@ -151,17 +151,21 @@ export class AgentOrchestratorService {
 
   public async chat({
     userId,
+    threadId,
     message,
     model,
     userEmail = "",
     userName = "",
   }: {
     userId: string;
+    threadId?: string;
     message: string;
     model?: string;
     userEmail?: string;
     userName?: string;
   }): Promise<{ reply: string; toolsUsed: string[]; success: boolean }> {
+    const targetThreadId = threadId || "default";
+
     if (!process.env.OPENAI_API_KEY) {
       return {
         reply: "AI chat is not configured. Please set the OPENAI_API_KEY environment variable.",
@@ -184,7 +188,7 @@ export class AgentOrchestratorService {
     // 1. Guardrail: evaluate scope
     // Check if the user has an active conversation (follow-up replies like
     // "3pm" or "gourav@gmail.com" should not be blocked mid-flow).
-    const existingHistory = await chatMessageRepository.findByUserId(userId);
+    const existingHistory = await chatMessageRepository.findByUserIdAndThread(userId, targetThreadId);
     const hasConversationContext = existingHistory.length > 0;
     const scopeCheck = scopeValidatorService.evaluateAssistantScope(message, hasConversationContext);
     if (!scopeCheck.allowed) {
@@ -192,12 +196,14 @@ export class AgentOrchestratorService {
       await chatMessageRepository.create({
         id: crypto.randomUUID(),
         userId,
+        threadId: targetThreadId,
         role: "user",
         content: message,
       });
       await chatMessageRepository.create({
         id: crypto.randomUUID(),
         userId,
+        threadId: targetThreadId,
         role: "assistant",
         content: reply,
       });
@@ -211,12 +217,14 @@ export class AgentOrchestratorService {
       await chatMessageRepository.create({
         id: crypto.randomUUID(),
         userId,
+        threadId: targetThreadId,
         role: "user",
         content: message,
       });
       await chatMessageRepository.create({
         id: crypto.randomUUID(),
         userId,
+        threadId: targetThreadId,
         role: "assistant",
         content: reply,
       });
@@ -227,6 +235,7 @@ export class AgentOrchestratorService {
     await chatMessageRepository.create({
       id: crypto.randomUUID(),
       userId,
+      threadId: targetThreadId,
       role: "user",
       content: message,
     });
@@ -236,7 +245,7 @@ export class AgentOrchestratorService {
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
     await chatMessageRepository.pruneOldMessages(userId, oneWeekAgo);
 
-    const history = await chatMessageRepository.findByUserId(userId);
+    const history = await chatMessageRepository.findByUserIdAndThread(userId, targetThreadId);
 
     // Bound conversation context to the most recent N messages to control
     // token growth across long sessions.
@@ -280,7 +289,12 @@ export class AgentOrchestratorService {
       },
     }));
 
-    const systemPrompt = `You are a strict, single-purpose automation orchestrator with access to the user's Gmail and Google Calendar via Corsair.
+    const systemPrompt = `Your name is Edeth. You are an exceptionally smart, proactive, and highly reliable AI personal assistant. Your job is to handle email (Gmail) and calendar (Google Calendar) tasks on behalf of the user with extreme accuracy, high speed, and minimal required friction or instructions.
+
+Key Traits of Edeth:
+1. Highly Personal & Attentive: You remember the user's preferences, work details, and context.
+2. Minimal Instruction, Maximum Accuracy: You execute actions cleanly based on context and long-term memory.
+3. Proactive & Warm: Professional, friendly, extremely helpful, but concise and fast.
 
 Today's date and time (UTC): ${new Date().toISOString()}
 User's Local Timezone: Asia/Kolkata (Indian Standard Time, GMT+5:30)
@@ -288,9 +302,9 @@ User's Local Date and Time: ${new Date(Date.now() + 5.5 * 3600 * 1000).toISOStri
 ${userEmail ? `\nCURRENT USER IDENTITY:\n- Name: ${userName || "the user"}\n- Email: ${userEmail}\n\nIMPORTANT: Whenever the user says "send an email to me", "send it to myself", "email me", "send to me", or any similar self-referencing phrase, use ${userEmail} as the recipient automatically. Never ask the user for their own email address.\n` : ""}
 ${userMemoriesBlock}
 CRITICAL DIRECTIVES:
-1. You are NOT a conversational companion or general knowledge LLM. You must ONLY perform automation tasks: searching Gmail, summarizing threads, drafting/sending replies, and managing calendar events/Google Meet invitations.
-2. If the user asks general questions, programming help, Q&A, or writing requests that are not direct email/calendar automations, you must refuse politely and concisely.
-3. Keep all responses extremely concise, direct, and short to minimize token consumption. Do not write lengthy explanations, conversational filler, or verbose summaries.
+1. You are Edeth, the user's trusted executive assistant. Focus on direct productivity automations: searching Gmail, summarizing threads, drafting/sending replies, and managing calendar events/Google Meet invitations.
+2. If the user asks general questions unrelated to email/calendar tasks or personal workflow management, gently guide them back to how you can assist with their schedule or inbox.
+3. Keep responses clean, structured, and fast. Accentuate clarity and confirm details before major actions.
 
 3b. FOLLOW-UP QUESTIONS — NEVER REJECT, ALWAYS MAKE IT HAPPEN:
    When the user gives you an email or calendar task but the request is missing critical details, you MUST ask short, specific follow-up questions to gather the missing information. NEVER refuse or say you cannot do it. Examples:
@@ -604,6 +618,7 @@ CRITICAL DIRECTIVES:
     await chatMessageRepository.create({
       id: crypto.randomUUID(),
       userId,
+      threadId: targetThreadId,
       role: "assistant",
       content: finalReply,
       toolsUsed,

@@ -112,7 +112,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const navigation = [
     { name: "Mail", href: "/inbox", icon: Mail },
     { name: "Calendar", href: "/calendar", icon: CalendarIcon },
-    { name: "AI Assistant", href: "/chat", icon: Bot },
+    { name: "Edeth (AI)", href: "/chat", icon: Bot },
     { name: "Settings", href: "/settings", icon: SettingsIcon },
   ];
 

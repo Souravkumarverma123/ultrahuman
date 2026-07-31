@@ -9,10 +9,43 @@ const TAGS = ["Agent"];
 const getPath = generatePath("/agent");
 
 export const agentRouter = router({
-  // Fetch user's chat history
+  // Get list of conversation threads for the user
+  getThreads: tenantProcedure
+    .meta({ openapi: { method: "GET", path: getPath("/threads"), tags: TAGS } })
+    .input(z.object({ tenantId: z.string() }))
+    .output(
+      z.object({
+        threads: z.array(
+          z.object({
+            id: z.string(),
+            title: z.string(),
+            updatedAt: z.date(),
+            messageCount: z.number(),
+          }),
+        ),
+      }),
+    )
+    .query(async ({ ctx }) => {
+      const userId = ctx.session.user.id;
+      const threads = await chatMessageRepository.getThreadsForUser(userId);
+      return { threads };
+    }),
+
+  // Delete a specific thread
+  deleteThread: tenantProcedure
+    .meta({ openapi: { method: "POST", path: getPath("/threads/delete"), tags: TAGS } })
+    .input(z.object({ tenantId: z.string(), threadId: z.string() }))
+    .output(z.object({ success: z.boolean() }))
+    .mutation(async ({ input, ctx }) => {
+      const userId = ctx.session.user.id;
+      await chatMessageRepository.deleteThread(userId, input.threadId);
+      return { success: true };
+    }),
+
+  // Fetch user's chat history for a specific thread
   getHistory: tenantProcedure
     .meta({ openapi: { method: "GET", path: getPath("/history"), tags: TAGS } })
-    .input(z.object({ tenantId: z.string() }))
+    .input(z.object({ tenantId: z.string(), threadId: z.string().optional() }))
     .output(
       z.object({
         messages: z.array(
@@ -26,7 +59,7 @@ export const agentRouter = router({
         ),
       }),
     )
-    .query(async ({ ctx }) => {
+    .query(async ({ input, ctx }) => {
       const userId = ctx.session.user.id;
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
@@ -34,8 +67,8 @@ export const agentRouter = router({
       // Auto-prune old messages
       await chatMessageRepository.pruneOldMessages(userId, oneWeekAgo);
 
-      // Fetch history
-      const history = await chatMessageRepository.findByUserId(userId);
+      // Fetch history for specified thread
+      const history = await chatMessageRepository.findByUserIdAndThread(userId, input.threadId);
 
       return {
         messages: history.map((m) => ({
@@ -48,7 +81,7 @@ export const agentRouter = router({
       };
     }),
 
-  // Clear user's chat history
+  // Clear user's chat history across threads
   clearHistory: tenantProcedure
     .meta({ openapi: { method: "POST", path: getPath("/clear-history"), tags: TAGS } })
     .input(z.object({ tenantId: z.string() }))
@@ -95,6 +128,7 @@ export const agentRouter = router({
     .input(
       z.object({
         tenantId: z.string(),
+        threadId: z.string().optional(),
         message: z.string().max(10_000),
         model: z.string().optional(),
       }),
@@ -112,6 +146,7 @@ export const agentRouter = router({
       const userName = ctx.session.user.name ?? "";
       return await agentOrchestratorService.chat({
         userId,
+        threadId: input.threadId,
         message: input.message,
         model: input.model,
         userEmail,

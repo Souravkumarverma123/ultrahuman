@@ -6,6 +6,7 @@ export const chatMessages = pgTable("chat_messages", {
   userId: text("user_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
+  threadId: text("thread_id"),
   role: text("role").notNull(), // 'user' | 'assistant'
   content: text("content").notNull(),
   toolsUsed: jsonb("tools_used").notNull().default([]),
