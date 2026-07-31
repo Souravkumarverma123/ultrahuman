@@ -6,6 +6,7 @@ import { tokenBudgetService } from "./token-budget.service";
 import { scopeValidatorService } from "./scope-validator.service";
 import { toolValidatorService } from "./tool-validator.service";
 import { chatMessageRepository } from "../chat/repository";
+import { memoryService } from "../memory";
 import { z } from "zod";
 import crypto from "crypto";
 
@@ -241,6 +242,23 @@ export class AgentOrchestratorService {
     // token growth across long sessions.
     const recentHistory = history.slice(-tokenBudgetService.getHistoryMessageLimit());
 
+    // 4b. Retrieve relevant long-term memories from Mem0
+    let userMemoriesBlock = "";
+    try {
+      const memories = await memoryService.searchMemory(
+        { userId },
+        message,
+        5,
+      );
+      if (memories.length > 0) {
+        const memoryLines = memories.map((m) => `- ${m.memory}`).join("\n");
+        userMemoriesBlock = `\nUSER MEMORY (long-term preferences — use these to personalize your responses):\n${memoryLines}\n`;
+        console.log(`[AgentOrchestrator] Injecting ${memories.length} memories into prompt`);
+      }
+    } catch (err) {
+      console.error("[AgentOrchestrator] Memory retrieval failed (non-fatal):", err);
+    }
+
     // Scope corsair client to tenant
     const client = corsair.withTenant(userId);
 
@@ -268,6 +286,7 @@ Today's date and time (UTC): ${new Date().toISOString()}
 User's Local Timezone: Asia/Kolkata (Indian Standard Time, GMT+5:30)
 User's Local Date and Time: ${new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().replace("Z", "+05:30")}
 ${userEmail ? `\nCURRENT USER IDENTITY:\n- Name: ${userName || "the user"}\n- Email: ${userEmail}\n\nIMPORTANT: Whenever the user says "send an email to me", "send it to myself", "email me", "send to me", or any similar self-referencing phrase, use ${userEmail} as the recipient automatically. Never ask the user for their own email address.\n` : ""}
+${userMemoriesBlock}
 CRITICAL DIRECTIVES:
 1. You are NOT a conversational companion or general knowledge LLM. You must ONLY perform automation tasks: searching Gmail, summarizing threads, drafting/sending replies, and managing calendar events/Google Meet invitations.
 2. If the user asks general questions, programming help, Q&A, or writing requests that are not direct email/calendar automations, you must refuse politely and concisely.
@@ -596,6 +615,20 @@ CRITICAL DIRECTIVES:
       completionTokens: totalCompletionTokens,
       totalTokens,
     });
+
+    // Background: extract and store durable memories from this conversation turn.
+    // Fire-and-forget — the response is returned immediately.
+    memoryService
+      .extractAndStoreMemories(
+        { userId },
+        [
+          { role: "user", content: message },
+          { role: "assistant", content: finalReply },
+        ],
+      )
+      .catch((err) =>
+        console.error("[AgentOrchestrator] Background memory extraction failed (non-fatal):", err),
+      );
 
     return {
       reply: finalReply,

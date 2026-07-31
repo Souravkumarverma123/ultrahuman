@@ -3,6 +3,7 @@ import { router, tenantProcedure } from "../../trpc";
 import { generatePath } from "../../utils/path-generator";
 import { chatMessageRepository } from "@repo/services/chat";
 import { agentOrchestratorService } from "@repo/services/agent";
+import { memoryService } from "@repo/services/memory";
 
 const TAGS = ["Agent"];
 const getPath = generatePath("/agent");
@@ -117,4 +118,60 @@ export const agentRouter = router({
         userName,
       });
     }),
+
+  // ─── Long-Term Memory Management ────────────────────────────────────────────
+
+  // Get all stored memories for the authenticated user
+  getMemories: tenantProcedure
+    .meta({ openapi: { method: "GET", path: getPath("/memories"), tags: TAGS } })
+    .input(z.object({ tenantId: z.string() }))
+    .output(
+      z.object({
+        memories: z.array(
+          z.object({
+            id: z.string(),
+            memory: z.string(),
+            score: z.number().optional(),
+            categories: z.array(z.string()).optional(),
+            createdAt: z.string().optional(),
+          }),
+        ),
+      }),
+    )
+    .query(async ({ ctx }) => {
+      const userId = ctx.session.user.id;
+      const allMemories = await memoryService.getAllMemories({ userId });
+      return {
+        memories: allMemories.map((m) => ({
+          id: m.id,
+          memory: m.memory,
+          score: m.score,
+          categories: m.categories,
+          createdAt: m.createdAt,
+        })),
+      };
+    }),
+
+  // Delete a specific memory by ID
+  deleteMemory: tenantProcedure
+    .meta({ openapi: { method: "POST", path: getPath("/memories/delete"), tags: TAGS } })
+    .input(z.object({ tenantId: z.string(), memoryId: z.string() }))
+    .output(z.object({ success: z.boolean() }))
+    .mutation(async ({ input, ctx }) => {
+      const userId = ctx.session.user.id;
+      await memoryService.deleteMemory({ userId }, input.memoryId);
+      return { success: true };
+    }),
+
+  // Delete all memories for the authenticated user
+  deleteAllMemories: tenantProcedure
+    .meta({ openapi: { method: "POST", path: getPath("/memories/delete-all"), tags: TAGS } })
+    .input(z.object({ tenantId: z.string() }))
+    .output(z.object({ success: z.boolean() }))
+    .mutation(async ({ ctx }) => {
+      const userId = ctx.session.user.id;
+      await memoryService.deleteAllMemories({ userId });
+      return { success: true };
+    }),
 });
+

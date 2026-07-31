@@ -17,6 +17,7 @@
     "@repo/logger": "workspace:*",
     "corsair": "^0.1.76",
     "google-auth-library": "^10.5.0",
+    "mem0ai": "^3.1.2",
     "openai": "^6.42.0",
     "pg": "^8.16.3",
     "dodopayments": "^2.32.0",

@@ -4,6 +4,7 @@ const envSchema = z.object({
   GOOGLE_OAUTH_CLIENT_ID: z.string().optional(),
   GOOGLE_OAUTH_CLIENT_SECRET: z.string().optional(),
   GOOGLE_OAUTH_REDIRECT_URI: z.string().optional(),
+  MEM0_API_KEY: z.string().optional(),
   DODO_PAYMENTS_API_KEY: z.string().optional(),
   DODO_PAYMENTS_ENVIRONMENT: z.preprocess((val) => val === "" ? undefined : val, z.enum(["test_mode", "live_mode"]).optional()),
 });
