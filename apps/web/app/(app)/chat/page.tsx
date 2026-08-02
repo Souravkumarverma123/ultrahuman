@@ -103,25 +103,72 @@ function parseDraftBlock(content: string): { textBefore: string; draft: EmailDra
   }
 }
 
-/** Render URLs inside message text as clickable links */
+/** Render Markdown links [label](url), bold text **text**, and standalone URLs as interactive elements */
 function parseContentWithLinks(content: string): React.ReactNode {
-  const urlRegex = /(https?:\/\/[^\s]+)/g;
-  const parts = content.split(urlRegex);
-  return parts.map((part, i) =>
-    urlRegex.test(part) ? (
-      <a
-        key={i}
-        href={part}
-        target={part.startsWith("/") ? "_self" : "_blank"}
-        rel="noopener noreferrer"
-        className="text-primary underline underline-offset-2 hover:opacity-80 font-medium"
-      >
-        {part}
-      </a>
-    ) : (
-      part
-    ),
-  );
+  // Matches markdown links [label](url), bold **text**, or standalone URLs
+  const regex = /(\[[^\]]+\]\([^\)]+\)|\*\*[^*]+\*\*|https?:\/\/[^\s]+)/g;
+  const parts = content.split(regex);
+
+  return parts.map((part, i) => {
+    if (!part) return null;
+
+    // Check Markdown Link: [label](url)
+    const mdLinkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+    if (mdLinkMatch && mdLinkMatch[1] && mdLinkMatch[2]) {
+      const label = mdLinkMatch[1];
+      const href = mdLinkMatch[2];
+      const isInternal = href.startsWith("/");
+      if (isInternal) {
+        return (
+          <Link
+            key={i}
+            href={href}
+            className="text-primary underline underline-offset-2 hover:opacity-80 font-semibold"
+          >
+            {label}
+          </Link>
+        );
+      }
+      return (
+        <a
+          key={i}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary underline underline-offset-2 hover:opacity-80 font-semibold"
+        >
+          {label}
+        </a>
+      );
+    }
+
+    // Check Bold Text: **text**
+    const mdBoldMatch = part.match(/^\*\*([^*]+)\*\*$/);
+    if (mdBoldMatch) {
+      return (
+        <strong key={i} className="font-semibold text-foreground">
+          {mdBoldMatch[1]}
+        </strong>
+      );
+    }
+
+    // Check Standalone URL
+    if (/^https?:\/\/[^\s]+$/.test(part)) {
+      return (
+        <a
+          key={i}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary underline underline-offset-2 hover:opacity-80 font-medium"
+        >
+          {part}
+        </a>
+      );
+    }
+
+    return part;
+  });
 }
 
 /** Email action completed notification card */
