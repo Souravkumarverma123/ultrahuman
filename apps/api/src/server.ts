@@ -34,7 +34,11 @@ app.use((req, res, next) => {
 });
 
 // 2. Security Headers (Helmet-equivalent)
+// Skip for auth routes — Better Auth handles OAuth redirects to external providers
 app.use((req, res, next) => {
+  if (req.path.startsWith("/api/auth/")) {
+    return next();
+  }
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
@@ -53,8 +57,8 @@ app.use((req, res, next) => {
 // 3. Request validation: Enforce application/json for REST/tRPC payloads
 app.use((req, res, next) => {
   if (["POST", "PUT", "PATCH"].includes(req.method)) {
-    // Exclude webhooks as they are raw payloads routed from external sources
-    if (req.path.startsWith("/webhooks/")) {
+    // Exclude webhooks (raw payloads) and auth routes (Better Auth handles its own parsing)
+    if (req.path.startsWith("/webhooks/") || req.path.startsWith("/api/auth/")) {
       return next();
     }
     const contentType = req.headers["content-type"];
@@ -105,7 +109,15 @@ app.use(
 
 // ─── Better Auth: Mount BEFORE express.json() ──────────────────────────────
 // Better Auth needs raw body access — express.json() must come after
-app.all("/api/auth/*any", toNodeHandler(auth));
+const betterAuthHandler = toNodeHandler(auth);
+app.all("/api/auth/*any", (req, res, next) => {
+  betterAuthHandler(req, res).catch((err: unknown) => {
+    logger.error("[better-auth] Handler error:", { err });
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Auth handler error", message: String(err) });
+    }
+  });
+});
 
 // ─── Corsair: Webhook handler (Gmail & Calendar real-time push) ───────────────
 // Single endpoint — Corsair auto-routes to the correct plugin handler

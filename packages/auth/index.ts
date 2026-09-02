@@ -5,6 +5,7 @@ import { db } from "@repo/database";
 import { logger } from "@repo/logger";
 
 export const auth = betterAuth({
+  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:8000",
   database: drizzleAdapter(db, {
     provider: "pg",
   }),
